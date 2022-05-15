@@ -19,9 +19,10 @@ const ChirpedCard = ({ data, user }) => {
   const [extraMenu, setExtraMenu] = useState(false);
 
   useEffect(() => {
+    if (typeof window !== "undefined")  {
     Chocolat(document.querySelectorAll(".chocolat-image" + data.objectId), {
       loop: true,
-    });
+    });}
   }, [data]);
 
   function onImgClick(e) {
@@ -63,6 +64,7 @@ const ChirpedCard = ({ data, user }) => {
 
   function deleteChirp(e) {
     e.stopPropagation();
+    if (typeof window !== "undefined") {
     if (window.confirm("Do you really want to delete your Chirp?")) {
       Backendless.Data.of("Chirps")
         .remove({ objectId: data.objectId })
@@ -76,6 +78,7 @@ const ChirpedCard = ({ data, user }) => {
           toastError("Something went wrong");
         });
     }
+  }
   }
 
   return (

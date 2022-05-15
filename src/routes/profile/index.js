@@ -49,10 +49,12 @@ const Profile = ({ userFilter, filter }) => {
 
   useEffect(() => {
     if (user) {
+      if (typeof window !== "undefined") {
       let modal = document.querySelector("." + style["follower-modal"]);
       modal.addEventListener("click", (e) => {
         e.stopPropagation();
       });
+    }
     }
   }, [user]);
 
@@ -65,15 +67,17 @@ const Profile = ({ userFilter, filter }) => {
   }
 
   function openEdit() {
+    if (typeof window !== "undefined") {
     let body = document.querySelector("body")
     body.style.overflow = "hidden"
-	  setEditStatus(true)
+	  setEditStatus(true) }
   }
 
   function closeEdit() {
+    if (typeof window !== "undefined") {
     let body = document.querySelector("body")
     body.style.overflow = "auto"
-	setEditStatus(false)
+	setEditStatus(false) }
   }
 
   function logout() {

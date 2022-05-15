@@ -29,10 +29,11 @@ const ChirpedCard = ({ chirpId }) => {
   useEffect(() => {
     if (chirpStatus === "success") {
       if (chirp !== undefined) {
-        window.scrollTo({ top: 0 });
+        if (typeof window !== "undefined")  {
+         window.scrollTo({ top: 0 });
         Chocolat(document.querySelectorAll(".chocolat-image-" + chirp.objectId), {
           loop: true,
-        });
+        });}
       }
     }
   }, [chirpStatus, chirp]);
