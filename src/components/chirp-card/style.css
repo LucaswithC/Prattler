@@ -1,0 +1,283 @@
+/* Chirp-Card Styles  */
+
+.chirp-card {
+    background: rgb(var(--grey-8));
+    padding: 20px;
+    border-radius: 10px;
+    position: relative;
+}
+
+.chirp-card::after {
+    content: "Drop your Images here to add them to your Chirp";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    padding: 10px;
+    background: rgb(var(--accent-3), 0.8);
+    color: rgb(var(--black));
+    font-size: 1.2rem;
+    font-weight: 500;
+    opacity: 0;
+    visibility: hidden;
+    transition: var(--duration-002);
+}
+
+.chirp-card.chirp-active-drop::after {
+    opacity: 1;
+    visibility: visible;
+}
+
+.chirp-card-header {
+    display: flex;
+    justify-content: space-between;
+}
+
+.chirp-value-progress {
+    -webkit-appearance: none;
+     -moz-appearance: none;
+          appearance: none;
+    width: 100%;
+    border-radius: 0;
+    height: 2px;
+    border: none;
+    background: rgb(var(--grey-6));
+    margin-bottom: 10px;
+}
+
+.chirp-value-progress::-webkit-progress-bar {
+    background: rgb(var(--grey-6));
+}
+
+.chirp-value-progress::-moz-progress-bar {
+    background: rgb(var(--accent-2));
+}
+
+.chirp-value-progress::-webkit-progress-value {
+    background: rgb(var(--accent-2));
+}
+
+.chirp-card-body {
+    display: flex;
+    gap: 20px;
+    padding: 10px 0 0;
+}
+
+.chirp-card-body-main {
+    flex-grow: 1;
+    padding-right: 10px;
+}
+
+.chirp-pp {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex: 0 0 50px;
+}
+
+.chirp-card-body textarea {
+    background: transparent;
+    font-size: 1.2rem;
+    border: none;
+    width: 100%;
+    resize: none;
+    font-family: 'Work Sans', sans-serif;
+    padding: 0;
+    overflow:hidden;
+	color: rgb(var(--grey-0));
+    margin-top: 5px;
+    margin-bottom: 20px;
+}
+
+.chirp-card-body textarea:focus {
+    outline: none;
+}
+
+.chirped-card-pictures {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    width: 100%;
+    aspect-ratio: 4/2;
+    border-radius: 20px;
+    overflow: hidden;
+    margin-bottom: 20px;
+}
+
+.chirped-card-pictures.odd {
+    flex-direction: column;
+}
+
+.chirped-card-pictures.even {
+    flex-direction: row;
+}
+
+.chirped-card-pictures > * {
+    flex: 1 1 calc(50% - 5px);
+    position: relative;
+    min-height: 20px;
+}
+
+.chirped-card-pictures img {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    cursor: move;
+    transition: opacity var(--duration-002);
+}
+
+.img-delete {
+    cursor: pointer;
+    z-index: 1;
+    position: absolute;
+    height: 30px;
+    width: 30px;
+    border-radius: 50%;
+    right: 10px;
+    top: 10px;
+    display: grid;
+    place-items: center;
+    background: rgb(var(--grey-1), 1);
+    color: rgb(var(--grey-8));
+}
+
+.img-fade img {
+    opacity: 0.5;
+}
+
+.uploading {
+    color: rgb(var(--accent-2));
+    margin-top: 1px;
+    font-size: 0.8rem;
+}
+
+.uploading i {
+    margin-right: 5px;
+    animation: loader 3s linear 0s infinite forwards;
+}
+
+.error {
+    color: rgb(var(--red))
+}
+
+.error-message {
+    margin-top: 5px;
+}
+
+.chirp-card-footer {
+    display: flex;
+    align-items: flex-end;
+    gap: 15px;
+    color: rgb(var(--accent-2));
+    flex-wrap: wrap;
+}
+
+.chirp-img-input {
+    position: absolute !important;
+    height: 1px;
+    width: 1px;
+    overflow: hidden;
+    clip: rect(1px, 1px, 1px, 1px);     
+}
+
+.img-label {
+    position: relative;
+    margin: 0;
+}
+
+.img-label::after {
+    content: "Only .jpg, .png, .gif\Amax. 4 MB";
+    position: absolute;
+    left: 50%;
+    top: calc(100% + 5px);
+    transform: translateX(-50%);
+    padding: 5px 10px;
+    border-radius: 5px;
+    color: rgb(var(--grey-0));
+    background: rgb(var(--grey-5), 0.9);
+    font-size: 0.8rem;
+    line-height: 1.5;
+    white-space: pre;
+    text-align: center;
+    pointer-events: none;
+    visibility: hidden;
+    opacity: 0;
+    transition: var(--duration-002);
+}
+
+.img-label:hover::after {
+    visibility: visible;
+    opacity: 1;
+}
+
+.chirp-reply {
+    position: relative;
+}
+
+.current-reply {
+	cursor: pointer;
+}
+
+.reply-setting {
+    position: absolute;
+    top: calc(100% + 30px);
+    left: 0;
+    background: rgb(var(--grey-8));
+    padding: 15px;
+    color: rgb(var(--grey-0));
+    border: 1px solid rgb(var(--grey-5));
+    border-radius: 10px;
+    font-size: 0.9rem;
+    width: 250px;
+    z-index: 3;
+}
+
+.reply-setting span {
+    display: block;
+    font-size: 0.8rem;
+    color: rgb(var(--grey-2));
+    margin-bottom: 10px;
+    margin-top: 5px;
+}
+
+.reply-setting input {
+    position: absolute;
+    clip: rect(0,0,0,0);
+    pointer-events: none;
+}
+
+.reply-setting div {
+    display: block;
+    padding: 10px;
+    border-radius: 5px;
+    margin-top: 10px;
+    cursor: pointer;
+}
+
+.reply-setting div:hover {
+    background: rgb(var(--grey-7));
+}
+
+.chirp-submit {
+    margin-left: auto;
+}
+
+@media (prefers-color-scheme: dark) {
+    .reply-setting {
+        background: rgb(var(--grey-7));
+    }
+    .reply-setting div:hover {
+        background: rgb(var(--grey-8));
+    } 
+}
+
+@keyframes loader {
+    0% {transform: rotate(0deg);}
+    100% {transform: rotate(360deg);}
+}

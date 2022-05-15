@@ -1,0 +1,181 @@
+
+.edit-cont {
+    background: rgb(var(--grey-0), 0);
+    position: fixed;
+    top: 0;
+    /* left: calc(-100% - 5000px); */
+    height: 100%;
+    width: 100%;
+    z-index: 50;
+    display: flex;
+    justify-content: flex-end;
+    visibility: hidden;
+    transition: var(--duration-002);
+}
+
+.edit-cont.active {
+    left: 0;
+    background: rgb(var(--grey-0), 0.5);
+    visibility: visible;
+}
+
+.edit-profile {
+    flex-basis: 500px;
+    flex-shrink: 1;
+    flex-grow: 0;
+    background: rgb(var(--grey-8));
+    padding: 20px;
+    overflow: auto;
+    transform: translateX(100%);
+    transition: var(--duration-002);
+}
+
+.edit-profile.active {
+    transform: translateX(0);
+}
+
+label {
+    display: block;
+    font-size: 0.8rem;
+    margin-bottom: 5px;
+    margin-top: 20px;
+}
+
+.nr-label {
+    display: flex;
+    justify-content: space-between;
+    gap: 5px;
+}
+
+.pp-label {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    background: rgb(var(--grey-7-5));
+    border-radius: 10px;
+    padding: 10px;
+}
+
+.pp-img {
+    width: 100px;
+    aspect-ratio: 1/1;
+    position: relative;
+    border-radius: 50%;
+    overflow: hidden;
+}
+
+.pp-img * {
+    position: absolute;
+    height: 100%;
+    width: 100%;
+    top: 0;
+    left: 0;
+    object-fit: cover;
+}
+
+.pp-img i {
+    display: grid;
+    place-items: center;
+    background: rgb(var(--grey-0), 0.5);
+    font-size: 2rem;
+    color: rgb(var(--grey-8)); 
+}
+
+.pp-img.img-active {
+    outline: 3px solid rgb(var(--accent-2))
+}
+
+.pp-img.img-active i {
+    display: none;
+}
+
+#pp-input, #banner-input {
+    position: absolute;
+    clip: rect(0,0,0,0);
+    pointer-events: none;
+}
+
+.banner-label {
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.banner-label .pp-img {
+    width: 100%;
+    height: 100px;
+    aspect-ratio: unset;
+    border-radius: 10px;
+}
+
+.submit {
+    display: block;
+    text-align: center;
+    margin-top: 20px;
+    width: 100%;
+}
+.close-edit {
+    padding: 20px;
+    text-align: end;
+    font-size: 2rem;
+    color: rgb(var(--grey-8));
+    cursor: pointer;
+    transform: translateY(-100%);
+    transition: var(--duration-002);
+    width: 100%;
+    flex-shrink: 2;
+}
+
+.close-edit.active {
+    transform: translateY(0);
+}
+
+.input-req {
+    background: rgb(var(--grey-7));
+    padding: 5px 10px;
+    border-radius: 5px;
+    margin: 10px 0;
+}
+
+.input-req > div {
+    display: flex;
+    gap: 5px;
+    margin: 5px 0;
+    align-items: center;
+}
+
+.error {
+    color: rgb(var(--red))
+}
+
+.error-message {
+    margin-top: 5px;
+}
+
+.error-box {
+    border-color: rgb(var(--red)) !important;
+}
+
+.correct {
+    color: rgb(var(--green))
+}
+
+.uploading {
+    color: rgb(var(--accent-2));
+    margin-top: 1px;
+    font-size: 0.8rem;
+}
+
+.uploading i {
+    margin-right: 5px;
+    animation: loader 3s linear 0s infinite forwards;
+}
+
+.login-loader {
+    margin-right: 5px;
+    animation: loader 3s linear 0s infinite forwards;
+}
+
+@keyframes loader {
+    0% {transform: rotate(0deg);}
+    100% {transform: rotate(360deg);}
+}

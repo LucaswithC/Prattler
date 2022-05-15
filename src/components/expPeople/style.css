@@ -1,0 +1,47 @@
+
+.people-card {
+    margin-top: 20px;
+}
+
+.people-banner {
+    margin: -20px;
+    margin-bottom: 0;
+    height: 150px;
+    width: calc(100% + 40px);
+    object-fit: cover;
+    border-radius: 10px 10px 0 0;
+}
+
+.people-pp {
+    display: block;
+    width: 100px;
+    aspect-ratio: 1/1;
+    margin: 0 auto;
+    margin-top: -90px;
+    outline: 5px solid rgb(var(--grey-7));
+    border-radius: 50%;
+}
+
+.people-body {
+    display: flex;
+    gap: 20px;
+}
+
+.people-left {
+    flex-grow: 1;
+}
+
+.people-right {
+    white-space: nowrap;
+    padding-top: 16px;
+}
+
+@media (max-width: 600px) {
+    .people-body {
+        flex-direction: column;
+    }
+    .people-right {
+        padding-top: 0;
+        text-align: center;
+    }
+}

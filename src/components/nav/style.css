@@ -1,0 +1,164 @@
+.nav-cont {
+	z-index: 50;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	background: rgb(var(--grey-8));
+	padding: 0 20px;
+}
+
+.nav-logo {
+	height: 30px;
+	margin: 10px 0
+}
+
+nav {
+	display: flex;
+	justify-content: center;
+	align-items: stretch;
+}
+
+nav *:not(:last-child) {
+	margin-right: 10px;
+}
+
+.nav-item {
+	display: flex;
+	align-items: center;
+	padding: 20px 12px;
+	text-decoration: none;
+	position: relative;
+	z-index: 1;
+}
+
+.nav-item:visited, .nav-item:focus {
+	color: rgb(var(--grey-0));
+}
+
+.nav-item:not(.active):hover::before {
+	content: "";
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 100%;
+	height: calc(1rem + 20px);
+	transform: translate(-50%, -50%);
+	background: rgb(var(--grey-7)) ;
+	border-radius: 50px;
+	z-index: -1;
+}
+
+.active {
+	font-weight: 500;
+	color: rgb(var(--accent-2)) !important
+}
+
+.nav-item:after {
+	content: "";
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	width: 100%;
+	height: 0;
+	border-top-left-radius: 5px;
+	border-top-right-radius: 5px;
+	background: rgb(var(--accent-2));
+	transition: height var(--duration-002);
+}
+
+.nav-item.active:after {
+	height: 4px;
+}
+
+.nav-user {
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
+	gap: 20px
+}
+
+.icon-input {
+	position: relative;
+	margin-right: 20px;
+}
+
+.icon-input i {
+	position: absolute;
+	top: 50%;
+	left: 10px;
+	transform: translateY(-50%);
+	color: rgb(var(--grey-3))
+}
+
+.icon-input input {
+	padding-left: 30px;
+	width: 100%;
+	max-width: 500px;
+}
+
+.nav-search {
+	background: rgb(var(--grey-7));
+	border-radius: 50px;
+	padding: 5px 10px;
+	border: 1px solid rgb(var(--grey-5));
+}
+
+.active-bookmark {
+	color: rgb(var(--accent-2))
+}
+
+.account {
+	align-self: stretch;
+	display: flex;
+	align-items: center;
+}
+
+.account-active img {
+	outline: 2px solid rgb(var(--accent-2));
+}
+
+.nav-mobile {
+	position: fixed;
+	bottom: 0;
+	width: 100%;
+	background: rgb(var(--grey-8));
+	z-index: 100;
+	box-shadow: 0px 0px 10px rgba(var(--grey-4), 0.5);
+	display: none;
+}
+
+.nav-mobile .nav-item {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	font-size: 0.8rem;
+	padding: 15px 12px;
+}
+
+.nav-mobile .nav-item i {
+	font-size: 1.3rem;
+}
+
+.nav-mobile .nav-item::before {
+	content: none;
+	display: none;
+}
+
+.nav-search-mobile {
+	display: none;
+}
+
+@media (max-width: 850px) {
+	.icon-input {
+		display: none;
+	}
+	.item-desktop {
+		display: none;
+	}
+	.nav-mobile {
+		display: flex;
+	}
+	.nav-search-mobile {
+		display: inline;
+	}
+}
