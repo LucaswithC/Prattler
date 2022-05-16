@@ -162,7 +162,7 @@ const Home = () => {
               )}
             </div>
             <p class="smaller dimmed">
-            2021 - {new Date().getFullYear()} |{" "}
+            {/* 2021 - {new Date().getFullYear()} |{" "} */}
             <a href="https://github.com/LucaswithC" target="_blank">
               © Lucas Kiers
             </a>
