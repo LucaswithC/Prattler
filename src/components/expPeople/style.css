@@ -1,6 +1,7 @@
 
 .people-card {
     margin-top: 20px;
+    display: block;
 }
 
 .people-banner {
@@ -20,6 +21,7 @@
     margin-top: -90px;
     outline: 5px solid rgb(var(--grey-7));
     border-radius: 50%;
+    object-fit: cover;
 }
 
 .people-body {

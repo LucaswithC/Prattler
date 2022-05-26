@@ -4,8 +4,7 @@ import Redirect from "../components/Redirect";
 import Backendless from "backendless";
 import { useQuery, useMutation, useQueryClient, QueryClient, QueryClientProvider } from "react-query";
 import { ReactQueryDevtools } from "react-query/devtools";
-
-
+import { route } from "preact-router";
 
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -27,8 +26,8 @@ const API_KEY = "C1715888-39CA-449E-A97C-5BA12DF125B0";
 Backendless.serverURL = "https://eu-api.backendless.com";
 Backendless.initApp(APP_ID, API_KEY);
 
-import "./services/Chirps.js";
-import "./services/Users.js";
+import "../backendless/services/Posts.js"
+import "../backendless/services/Users.js"
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -42,6 +41,16 @@ const App = () => {
   useEffect(() => {
     function success(result) {
       console.log("Is login valid?: " + result);
+      if(!result) {
+        Backendless.UserService.logout()
+        .then(function () {
+          queryClient.invalidateQueries("currentUser");
+          route("/explore/top")
+        })
+        .catch(function (error) {
+          console.log(error);
+        });
+      }
     }
 
     function error(err) {

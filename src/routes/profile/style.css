@@ -106,6 +106,10 @@
     border-bottom: 1px solid rgb(var(--grey-6));
 }
 
+.follower-item-main {
+    flex-grow: 1;
+}
+
 .follower-item img {
     height: 50px;
     aspect-ratio: 1/1;

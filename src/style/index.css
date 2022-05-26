@@ -44,15 +44,20 @@ a:focus, a:hover, a:visited {
 	color: rgb(var(--grey-0))
 }
 
+a.link:focus, a.link:visited {
+	color: rgb(var(--accent-4))
+}
+
 a.link {
-	color: rgb(var(--accent-2));
+	color: rgb(var(--accent-3));
 	font-weight: 500;
 	cursor: pointer;
 }
 
-a.link:focus, a.link:hover, a.link:visited {
-	color: rgb(var(--accent-3))
+a.link:hover {
+	color: rgb(var(--accent-2));
 }
+
 
 button, .button {
 	padding: 10px 20px;
@@ -144,11 +149,6 @@ input:focus, textarea:focus {
 	color: rgb(var(--green))
 }
 
-.loader {
-	margin-right: 5px;
-    animation: loader 3s linear 0s infinite forwards;
-}
-
 .m-0 {
 	margin: 0;
 }
@@ -159,6 +159,10 @@ input:focus, textarea:focus {
 
 .mt-1 {
 	margin-top: 10px
+}
+
+.mt-2 {
+	margin-top: 20px;
 }
 
 .mt-0 {
@@ -198,6 +202,40 @@ input:focus, textarea:focus {
 	padding-bottom: 10px;
 	border-bottom: 1px solid rgb(var(--grey-6));
 	margin-bottom: 10px;
+}
+
+.loader-outer {
+	display: grid;
+	place-items: center;
+	padding: 20px;
+}
+
+.loader {
+	display: block;
+	width: 40px;
+	height: 40px;
+	border: 5px solid rgb(var(--grey-3));
+	border-radius: 50%;
+	clip-path: polygon(0% 0%, 50% 50%, 100% 0%, 100% 100%, 0% 100%);
+	animation: loader 2s ease infinite;
+}
+
+.loader-outer.text {
+	padding: 0;
+	display: inline-block;
+	height: 0px;
+}
+
+.loader-outer.text .loader {
+	display: inline-block;
+	width: 0.8rem;
+	height: 0.8rem;
+	border: 3px solid rgb(var(--grey-8));
+}
+
+@keyframes loader {
+	from {transform: rotate(0deg)}
+	to {transform: rotate(360deg)}
 }
 
 .chocolat-overlay {

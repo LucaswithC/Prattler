@@ -7,9 +7,21 @@
 	padding: 0 20px;
 }
 
+.logo-cont {
+	display: flex;
+	align-items: flex-start;
+}
+
 .nav-logo {
 	height: 30px;
 	margin: 10px 0
+}
+
+.dev-badge {
+	color: rgb(var(--accent-2));
+	display: inline-block;
+	font-size: 0.7rem;
+	margin: 10px 10px;
 }
 
 nav {
@@ -125,18 +137,24 @@ nav *:not(:last-child) {
 	z-index: 100;
 	box-shadow: 0px 0px 10px rgba(var(--grey-4), 0.5);
 	display: none;
+	justify-content: space-evenly;
 }
 
 .nav-mobile .nav-item {
 	display: flex;
 	flex-direction: column;
-	gap: 8px;
+	gap: 5px;
 	font-size: 0.8rem;
-	padding: 15px 12px;
+	padding: 10px 12px;
+	font-size: 0.8rem;
 }
 
-.nav-mobile .nav-item i {
-	font-size: 1.3rem;
+.nav-mobile .nav-item :where(i, img) {
+	font-size: 1rem;
+	height: 1.1rem;
+	width: 1.1rem;
+	object-fit: cover;
+	border-radius: 50%;
 }
 
 .nav-mobile .nav-item::before {
@@ -161,4 +179,8 @@ nav *:not(:last-child) {
 	.nav-search-mobile {
 		display: inline;
 	}
+	.nav-item.active::after {
+		height: 3px
+	}
 }
+

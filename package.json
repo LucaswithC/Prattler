@@ -33,7 +33,9 @@
     "preact-render-to-string": "^5.1.4",
     "preact-router": "^3.2.1",
     "react-query": "^3.34.16",
-    "react-toastify": "^8.2.0"
+    "react-string-replace": "^1.1.0",
+    "react-toastify": "^8.2.0",
+    "url-encode-decode": "^1.0.0"
   },
   "jest": {
     "preset": "jest-preset-preact",

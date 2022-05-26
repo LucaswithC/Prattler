@@ -3,14 +3,23 @@ import { useEffect, useState } from "preact/hooks";
 import { Link } from "preact-router/match";
 import style from "./style.css";
 
-import { useQuery, useQueryClient } from "react-query";
+import { useQuery, useQueryClient, useInfiniteQuery } from "react-query";
+
+import useInView from "../../components/other/inView/index";
 
 import ChirpedCard from "../../components/chirped-card";
 import ExpPeople from "../../components/expPeople";
 import LoginImg from "../../assets/images/login_img.svg";
+import Loader from "../../components/loader/loader";
+
+import { route } from "preact-router";
+
+import { encode, decode } from "url-encode-decode";
 
 // Note: `user` comes from the URL, courtesy of our router
 const Profile = ({ searchTerm, filter }) => {
+  const [searchInput, setSearchInput] = useState(decode(searchTerm));
+  const { isInView: loadInView, inViewRef: loadRef } = useInView();
   const queryClient = useQueryClient();
   const {
     status: userStatus,
@@ -22,20 +31,56 @@ const Profile = ({ searchTerm, filter }) => {
   const {
     status: expStatus,
     data: expData,
-    error: expError,
-  } = useQuery(filter + "-Explore", async () => {
-    let queryBuilder = Backendless.DataQueryBuilder.create();
-    if (filter === "people") {
-      queryBuilder.setSortBy(["created DESC"]);
-      return Backendless.Data.of("Users").find(queryBuilder);
-    } else {
-      queryBuilder.setSortBy(["created DESC"]);
-      queryBuilder.setRelated(["creator"]);
-      if (filter === "media") queryBuilder.setWhereClause(`images->'$[0]' != null`);
-      return Backendless.Data.of("Chirps").find(queryBuilder);
+    isFetchingNextPage,
+    fetchNextPage,
+    hasNextPage,
+  } = useInfiniteQuery(
+    [filter + "-Explore", decode(searchTerm)],
+    async ({ pageParam = 0 }) => {
+      let filterQuery = { pageSize: 20, pageOffset: pageParam };
+      if (filter === "people") {
+        filterQuery.sortBy = "Count(followers) DESC";
+        if (searchTerm) filterQuery.whereClause = [`name LIKE '%${searchTerm}%' or username LIKE '%${searchTerm}%'`];
+        return Backendless.APIServices.Users.getAllUsers(filterQuery);
+      }
+      filterQuery.whereClause = ["type in ('Post', 'Comment')"];
+      if (searchTerm) filterQuery.whereClause.push(`post.text LIKE '%${searchTerm}%'`);
+      if (filter === "top") filterQuery.sortBy = "totalLikes DESC";
+      else if (filter === "latest") filterQuery.sortBy = "created DESC";
+      else if (filter === "media") filterQuery.whereClause.push("post.images->'$[0]' != null");
+      return Backendless.APIServices.Posts.getAll(filterQuery);
+    },
+    {
+      getNextPageParam: (lastPage, pages) => (lastPage.length === 20 ? pages.length * 20 : undefined),
     }
-  });
-  const [search, setSearch] = useState(searchTerm.replace("hash+", "#"));
+  );
+  // const {
+  //   status: expStatusOld,
+  //   data: expDataOld,
+  //   error: expError,
+  // } = useQuery([filter + "-Explore", searchTerm], async () => {
+  //   if (filter === "people") {
+  //     let filterQuery = { sortBy: "Count(followers) DESC" };
+  //     if (searchTerm) filterQuery.whereClause = [`name LIKE '%${searchTerm}%' or username LIKE '%${searchTerm}%'`];
+  //     return Backendless.APIServices.Users.getAllUsers(filterQuery);
+  //   }
+  //   let filterQuery = {};
+  //   filterQuery.whereClause = ["type in ('Post', 'Comment')"];
+  //   if (searchTerm) filterQuery.whereClause.push(`post.text LIKE '%${searchTerm}%'`);
+  //   if (filter === "top") filterQuery.sortBy = "totalLikes DESC";
+  //   else if (filter === "latest") filterQuery.sortBy = "created DESC";
+  //   else if (filter === "media") filterQuery.whereClause.push("post.images->'$[0]' != null");
+  //   return await Backendless.APIServices.Posts.getAll(filterQuery);
+  // });
+
+  function sendSearch(e) {
+    e.preventDefault();
+    route("/explore/" + filter + "/" + encode(searchInput));
+  }
+
+  useEffect(() => {
+    if (loadInView) fetchNextPage();
+  }, [loadInView]);
 
   return (
     <div>
@@ -58,30 +103,47 @@ const Profile = ({ searchTerm, filter }) => {
       )}
       <div class={"container " + style.explore}>
         <div class={"card " + style["filter-card"]}>
-          <Link href={"/explore/top" + (search && "/" + search)} activeClassName={style.active} class={style["filter-out"]}>
+          <Link href={"/explore/top" + (searchInput && "/" + searchInput)} activeClassName={style.active} class={style["filter-out"]}>
             <strong>Top</strong>
           </Link>
-          <Link href={"/explore/latest" + (search && "/" + search)} activeClassName={style.active} class={style["filter-out"]}>
+          <Link href={"/explore/latest" + (searchInput && "/" + searchInput)} activeClassName={style.active} class={style["filter-out"]}>
             <strong>Latest</strong>
           </Link>
-          <Link href={"/explore/people" + (search && "/" + search)} activeClassName={style.active} class={style["filter-out"]}>
+          <Link href={"/explore/people" + (searchInput && "/" + searchInput)} activeClassName={style.active} class={style["filter-out"]}>
             <strong>People</strong>
           </Link>
-          <Link href={"/explore/media" + (search && "/" + search)} activeClassName={style.active} class={style["filter-out"]}>
+          <Link href={"/explore/media" + (searchInput && "/" + searchInput)} activeClassName={style.active} class={style["filter-out"]}>
             <strong>Media</strong>
           </Link>
         </div>
         <div>
-          <form class={style["filter-search"]}>
+          <form class={style["filter-search"]} onSubmit={sendSearch}>
             <div class={style["search-cont"]}>
               <i class="fa-solid fa-magnifying-glass"></i>
-              <input type="text" placeholder="#GreekSalad" value={search} onInput={(e) => setSearch(e.target.value)} />
+              <input name="searchInput" type="text" placeholder="#GreekSalad" value={searchInput} onInput={(e) => setSearchInput(e.target.value)} />
             </div>
 
             <button type="submit">Search</button>
           </form>
-          {expData &&
-            (filter === "people" ? expData.map((person) => <ExpPeople user={person} />) : expData.map((chirp) => <ChirpedCard data={chirp} user={user} />))}
+          {expStatus === "success" &&
+            (expData.pages[0].length === 0 ? (
+              <p class="loader-outer accent">{filter === "people" ? "No accounts found" : "No posts found"}</p>
+            ) : filter === "people" ? (
+              expData.pages.map((page) => page.map((person) => <ExpPeople user={person} />))
+            ) : (
+              expData.pages.map((page) => page.map((chirp) => <ChirpedCard data={chirp} user={user} />))
+            ))}
+          <div ref={loadRef}>
+            {isFetchingNextPage || expStatus === "loading" ? (
+              <Loader />
+            ) : (
+              hasNextPage && (
+                <button class="small" onClick={fetchNextPage}>
+                  Load more
+                </button>
+              )
+            )}
+          </div>
         </div>
       </div>
     </div>

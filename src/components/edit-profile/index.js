@@ -10,7 +10,7 @@ import bannerPlaceholder from "../../assets/icons/banner_placeholder.svg";
 
 let emailCheckTimeout;
 
-const EditProfile = ({ editStatus, closeEdit }) => {
+const EditProfile = ({ oldUser, editStatus, closeEdit, setUser }) => {
   const queryClient = useQueryClient();
   const {status: userStatus, data: user, error: userError, refetch: userRefetch} = useQuery('currentUser', async () => {
     return Backendless.UserService.getCurrentUser()
@@ -166,6 +166,7 @@ const EditProfile = ({ editStatus, closeEdit }) => {
             let updateData = {};
             let ppRes = values[0];
             let bannerRes = values[1];
+            updateData.username = user.username;
             if (newName !== user.name) updateData.name = newName;
             if (newBio !== user.bio) updateData.bio = newBio;
             if (newPPicture) updateData.profilePicture = ppRes || user?.profilePicture;
@@ -173,15 +174,14 @@ const EditProfile = ({ editStatus, closeEdit }) => {
             if (email !== curEmail) updateData.email = email;
             if (newPassword) updateData.newPassword = newPassword;
             if (email !== curEmail || newPassword) updateData.oldPassword = oldPassword;
-            Backendless.APIServices.Chirps.updateUser(updateData)
+            Backendless.APIServices.Users.editUser(updateData)
               .then(function (updatedUser) {
-                console.log(updatedUser);
                 setGeneralError("Success");
                 setLoading(false);
                 Backendless.UserService.currentUser = updatedUser
-                console.log(Backendless.UserService)
                 queryClient.invalidateQueries("currentUser");
-                // queryClient.setQueryData('currentUser', {...updatedUser});
+                let newUserData = Object.assign(oldUser, updatedUser)
+                setUser(newUserData)
               })
               .catch(function (error) {
                 user.email = curEmail;
@@ -193,9 +193,9 @@ const EditProfile = ({ editStatus, closeEdit }) => {
                   setGeneralError("False Email Format | Err-Code: " + error.code);
                 } else if (error.code === 20002) {
                   setGeneralError("False Password Format | Err-Code: " + error.code);
-                } else if (error.code === 3001) {
+                } else if (error.code === 30001) {
                   setGeneralError("Name is too long | Err-Code: " + error.code);
-                } else if (error.code === 3001) {
+                } else if (error.code === 30002) {
                   setGeneralError("Biography is too long | Err-Code: " + error.code);
                 } else {
                   setGeneralError("Something went wrong | Err-Code: " + error.code);

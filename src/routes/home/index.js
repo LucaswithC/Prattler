@@ -7,14 +7,18 @@ import ChirpedCard from "../../components/chirped-card";
 import Chirp from "../chirp";
 import Empty from "../../assets/images/empty.svg";
 import { useEffect, useState } from "preact/hooks";
+import useInView from "../../components/other/inView/index.tsx";
 
-import { useQuery, useMutation, useQueryClient, QueryClient, QueryClientProvider } from "react-query";
-
+import { useQuery, useMutation, useQueryClient, QueryClient, QueryClientProvider, useInfiniteQuery } from "react-query";
 import ppPlaceholder from "../../assets/icons/pp_placeholder.svg";
 import bannerPlaceholder from "../../assets/icons/banner_placeholder.svg";
+import Loader from "../../components/loader/loader";
+
+const { encode, decode } = require("url-encode-decode");
 
 const Home = () => {
   const queryClient = useQueryClient();
+  const { isInView: loadInView, inViewRef: loadRef } = useInView();
   const {
     status: userStatus,
     data: user,
@@ -22,26 +26,46 @@ const Home = () => {
   } = useQuery("currentUser", async () => {
     return Backendless.UserService.getCurrentUser();
   });
+  // const {
+  //   status: chirpsStatusOld,
+  //   data: chirpsOld,
+  //   error: chirpsError,
+  // } = useQuery("homeChirps", async () => {
+  //   return await Backendless.APIServices.Posts.getFollowingPosts({whereClause: [`objectId = 'what'`]})
+  // });
+  const {
+    status: chirpsStatus,
+    data: chirps,
+    error,
+    isFetching,
+    isFetchingNextPage,
+    isFetchingPreviousPage,
+    fetchNextPage,
+    fetchPreviousPage,
+    hasNextPage,
+    hasPreviousPage,
+  } = useInfiniteQuery(
+    "homeChirps",
+    async ({ pageParam = 0 }) => {
+      return Backendless.APIServices.Posts.getFollowingPosts({ pageSize: 20, pageOffset: pageParam });
+    },
+    {
+      getNextPageParam: (lastPage, pages) => (lastPage.length === 20 ? pages.length * 20 : undefined),
+    }
+  );
+  const {
+    status: trendsStatus,
+    data: trendsHashtags,
+    error: trendsError,
+  } = useQuery("homeHashtags", async () => {
+    return await Backendless.APIServices.Posts.trendingHashtags();
+  });
   const {
     status: homeUserStatus,
     data: homeUser,
     error: homeUserError,
   } = useQuery("homeUserList", async () => {
-    let queryBuilder = Backendless.DataQueryBuilder.create();
-    queryBuilder.addProperties("banner", "bio", "name", "username", "profilePicture");
-    queryBuilder.setPageSize(3);
-    queryBuilder.setSortBy(["created DESC"]);
-    return Backendless.Data.of("Users").find(queryBuilder);
-  });
-  const {
-    status: chirpsStatus,
-    data: chirps,
-    error: chirpsError,
-  } = useQuery("homeChirps", async () => {
-    var queryBuilder = Backendless.DataQueryBuilder.create().setWhereClause("");
-    queryBuilder.setSortBy(["created DESC"]);
-    queryBuilder.setRelated(["creator"]);
-    return Backendless.Data.of("Chirps").find(queryBuilder);
+    return Backendless.APIServices.Users.getSuggestedUsers();
   });
 
   useEffect(() => {
@@ -53,92 +77,66 @@ const Home = () => {
     }
   }, [userStatus]);
 
+  useEffect(() => {
+    if (loadInView) fetchNextPage();
+  }, [loadInView]);
+
   return (
     <div>
       {user ? (
         <div class={style.home + " container"}>
           <div class={style["left-column"]}>
-                <ChirpCard user={user} />
-                {chirpsStatus == "success" ? (
-                  chirps.length >= 1 ? (
-                    chirps.map((chirp) => <ChirpedCard data={chirp} user={user} />)
-                  ) : (
-                    <div class={style["empty-cont"]}>
-                      <img src={Empty} />
-                      <div>
-                        <h2 class="accent">A bit empty here right?</h2>
-                        <p>Discover our Explore page and follow your favourite Chirpers to fill up your personal Home-Feed</p>
-                        <Link href="/explore/top" class="button">
-                          Explore
-                        </Link>
-                      </div>
-                    </div>
-                  )
-                ) : (
-                  <div>Loading</div>
-                )}
+            <ChirpCard user={user} />
+            {chirpsStatus == "success" &&
+              (chirps.pages[0].length === 0 ? (
+                <div class={style["empty-cont"]}>
+                  <img src={Empty} />
+                  <div>
+                    <h2 class="accent">A bit empty here right?</h2>
+                    <p>Discover our Explore page and follow your favourite Chirpers to fill up your personal Home-Feed</p>
+                    <Link href="/explore/top" class="button">
+                      Explore
+                    </Link>
+                  </div>
+                </div>
+              ) : (
+                chirps.pages.map((chirpsRender) => chirpsRender.map((chirp) => <ChirpedCard data={chirp} user={user} />))
+              ))}
+            <div ref={loadRef}>
+              {isFetchingNextPage || chirpsStatus === "loading" ? (
+                <Loader />
+              ) : (
+                hasNextPage && (
+                  <button class="small" onClick={fetchNextPage}>
+                    Load more
+                  </button>
+                )
+              )}
+            </div>
           </div>
           <div class={style["right-column"]}>
-            <div class="card">
-              <div class="card-header">
-                <strong class="smaller">Trends for you</strong>
+            {trendsStatus === "success" && trendsHashtags.length > 0 && (
+              <div class="card">
+                <div class="card-header">
+                  <strong class="smaller">Trends (last 72 hours)</strong>
+                </div>
+                <div class="card-body">
+                  {trendsHashtags.map((trend) => (
+                    <Link href={"/explore/top/" + encode(trend.hashtag)} class={style["hashtag-cont"]}>
+                      <p class="m-0">
+                        <strong>{trend.hashtag}</strong>
+                      </p>
+                      <p class="smaller m-0">{trend.postCount} Posts</p>
+                    </Link>
+                  ))}
+                </div>
               </div>
-              <div class="card-body">
-                <Link href="/explore/top/%23programming" class={style["hashtag-cont"]}>
-                  <p class="m-0">
-                    <strong>#programming</strong>
-                  </p>
-                  <p class="smaller m-0">213k Chirps</p>
-                </Link>
-                <Link href="/explore/top/%23+space" class={style["hashtag-cont"]}>
-                  <p class="m-0">
-                    <strong>#space</strong>
-                  </p>
-                  <p class="smaller m-0">34k Chirps</p>
-                </Link>
-                <Link href="/explore/top/%23basketball" class={style["hashtag-cont"]}>
-                  <p class="m-0">
-                    <strong>#basketball</strong>
-                  </p>
-                  <p class="smaller m-0">1.2k Chirps</p>
-                </Link>
-                <Link href="/explore/top/%23cineville" class={style["hashtag-cont"]}>
-                  <p class="m-0">
-                    <strong>#cineville</strong>
-                  </p>
-                  <p class="smaller m-0">712 Chirps</p>
-                </Link>
-                <Link href="/explore/top/%23cinema" class={style["hashtag-cont"]}>
-                  <p class="m-0">
-                    <strong>#cinema</strong>
-                  </p>
-                  <p class="smaller m-0">654 Chirps</p>
-                </Link>
-                <Link href="/explore/top/%23grrensocks" class={style["hashtag-cont"]}>
-                  <p class="m-0">
-                    <strong>#grrensocks</strong>
-                  </p>
-                  <p class="smaller m-0">325 Chirps</p>
-                </Link>
-                <Link href="/explore/top/%23london" class={style["hashtag-cont"]}>
-                  <p class="m-0">
-                    <strong>#london</strong>
-                  </p>
-                  <p class="smaller m-0">278 Chirps</p>
-                </Link>
-                <Link href="/explore/top/%23dragon" class={style["hashtag-cont"]}>
-                  <p class="m-0">
-                    <strong>#dragon</strong>
-                  </p>
-                  <p class="smaller m-0">48 Chirps</p>
-                </Link>
-              </div>
-            </div>
-            <div class="card">
-              <div class="card-header">
-                <strong class="smaller">Who to follow</strong>
-              </div>
-              {homeUser && (
+            )}
+            {homeUser && (
+              <div class="card">
+                <div class="card-header">
+                  <strong class="smaller">Who to follow</strong>
+                </div>
                 <div class="card-body">
                   {homeUser.map((user) => (
                     <Link href={"/profile/" + user.username} class={style["follow-card"]}>
@@ -149,26 +147,29 @@ const Home = () => {
                           <p class="m-0">
                             <strong>{user.name || user.username}</strong>
                           </p>
-                          <p class="smaller m-0">154 Follower</p>
+                          <p class="smaller m-0">{user.followers} Follower</p>
                         </div>
-                        <button class="small">
-                          <i class="fa-solid fa-user-plus"></i> Follow
-                        </button>
+                        {user.followed ? (
+                          <button class="small sec">Unfollow</button>
+                        ) : (
+                          <button class="small">
+                            <i class="fa-solid fa-user-plus"></i> Follow
+                          </button>
+                        )}
                       </div>
                       {user.bio && <p class={style["card-bio"]}>{user.bio}</p>}
                     </Link>
                   ))}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
             <p class="smaller dimmed">
-            {/* 2021 - {new Date().getFullYear()} |{" "} */}
-            <a href="https://github.com/LucaswithC" target="_blank">
-              © Lucas Kiers
-            </a>
-          </p>
+              2021 - {new Date().getFullYear()} |{" "}
+              <a href="https://github.com/LucaswithC" target="_blank">
+                © Lucas Kiers
+              </a>
+            </p>
           </div>
-          
         </div>
       ) : (
         <div class={"container " + style["not-logged-in-cont"]}>

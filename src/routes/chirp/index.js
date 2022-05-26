@@ -3,12 +3,25 @@ import style from "./style.css";
 import { useEffect, useState } from "preact/hooks";
 
 import Chocolat from "chocolat";
-import { useQuery } from "react-query";
+import { useQuery, useInfiniteQuery } from "react-query";
 import { Link } from "preact-router";
+import ChirpCard from "../../components/chirp-card";
+import CommentCard from "../../components/comment-card";
+import RepliedCard from "../../components/replied-card";
+
+import useInView from "../../components/other/inView";
+
+import toastError from "../../components/toasts/error";
+
+import reactStringReplace from "react-string-replace";
+import Loader from "../../components/loader/loader";
+
+import createDate from "../../components/other/date";
 
 const ChirpedCard = ({ chirpId }) => {
   const [sortStatus, setSortStatus] = useState(false);
   const [replySetting, setReplySetting] = useState("everyone");
+  const { isInView: loadInView, inViewRef: loadRef } = useInView();
   const {
     status: userStatus,
     data: user,
@@ -21,48 +34,112 @@ const ChirpedCard = ({ chirpId }) => {
     data: chirp,
     error: chirpError,
   } = useQuery("chirp-" + chirpId, async () => {
-    var queryBuilder = Backendless.DataQueryBuilder.create().setWhereClause(`objectId='${chirpId}'`);
-    queryBuilder.setRelated(["creator"]);
-    return Backendless.Data.of("Chirps").findFirst(queryBuilder);
+    return Backendless.APIServices.Posts.getSinglePost(chirpId);
   });
+  const {
+    status: commentStatus,
+    data: comments,
+    isFetchingNextPage,
+    fetchNextPage,
+    hasNextPage,
+  } = useInfiniteQuery(
+    ["chirp-comments-" + chirpId, chirp],
+    async ({ pageParam = 0 }) => {
+      return Backendless.APIServices.Posts.getPostComments(chirp.post.postObjectId, { pageSize: 20, pageOffset: pageParam });
+    },
+    {
+      getNextPageParam: (lastPage, pages) => (lastPage.length === 20 ? pages.length * 20 : undefined),
+      enabled: !!chirp,
+    }
+  );
+  // const {
+  //   status: commentStatusOld,
+  //   data: commentsOld,
+  //   error: commentError,
+  // } = useQuery(
+  //   ["chirp-comments-" + chirpId, chirp],
+  //   async () => {
+  //     return Backendless.APIServices.Posts.getPostComments(chirp.post.postObjectId);
+  //   },
+  //   {
+  //     enabled: !!chirp,
+  //   }
+  // );
+
+  const [newComments, setNewComments] = useState([]);
+
+  const [commentAmount, setCommentAmount] = useState(0);
+  const [liked, setLiked] = useState(0);
+  const [likedAmount, setLikedAmount] = useState(0);
+  const [reposted, setReposted] = useState(0);
+  const [repostedAmount, setRepostedAmount] = useState(0);
+  const [saved, setSaved] = useState(0);
+  const [savedAmount, setSavedAmount] = useState(0);
 
   useEffect(() => {
     if (chirpStatus === "success") {
       if (chirp !== undefined) {
-        if (typeof window !== "undefined")  {
-         window.scrollTo({ top: 0 });
-        Chocolat(document.querySelectorAll(".chocolat-image-" + chirp.objectId), {
-          loop: true,
-        });}
+        if (typeof window !== "undefined") {
+          window.scrollTo({ top: 0 });
+          Chocolat(document.querySelectorAll(".chocolat-image-" + chirp.objectId), {
+            loop: true,
+          });
+        }
+        setLiked(chirp.post?.liked);
+        setReposted(chirp.post?.reposted);
+        setSaved(chirp.post?.saved);
+        setCommentAmount(chirp.post?.totalComments || 0);
+        setLikedAmount(chirp.post?.totalLikes || 0);
+        setRepostedAmount(chirp.post?.totalRepost || 0);
+        setSavedAmount(chirp.post?.totalSaved || 0);
       }
     }
   }, [chirpStatus, chirp]);
 
-  function rechirp(e) {
-    e.currentTarget.classList.toggle("rechirped");
+  useEffect(() => {
+    if (loadInView) fetchNextPage();
+  }, [loadInView]);
+
+  async function rechirp(e) {
+    if (!reposted) {
+      setReposted(!reposted);
+      setRepostedAmount(likedAmount + 1);
+      await Backendless.APIServices.Posts.repost(chirp.post.postObjectId).catch((err) => {
+        setReposted(!liked);
+        setRepostedAmount(likedAmount - 1);
+        toastError(err.message);
+      });
+    } else {
+      toastError("Delete your Post to remove the repost");
+    }
   }
 
-  function like(e) {
-    e.currentTarget.classList.toggle("liked");
-    let heart = e.currentTarget.querySelector("i");
-    heart.classList.toggle("fa-regular");
-    heart.classList.toggle("fa-solid");
+  async function like(e) {
+    setLiked(!liked);
+    if (!liked) {
+      setLikedAmount(likedAmount + 1);
+      await Backendless.APIServices.Posts.likePost(chirp.post.postObjectId).catch((err) => {
+        setLiked(!liked);
+        setLikedAmount(likedAmount - 1);
+        toastError(err.message);
+      });
+    } else {
+      setLikedAmount(likedAmount - 1);
+      await Backendless.APIServices.Posts.unlikePost(chirp.post.postObjectId).catch((err) => {
+        setLiked(!liked);
+        setLikedAmount(likedAmount + 1);
+        toastError(err.message);
+      });
+    }
   }
 
   function save(e) {
-    let bookmark = e.currentTarget.querySelector("i");
-    bookmark.classList.toggle("fa-regular");
-    bookmark.classList.toggle("fa-solid");
+    setSaved(!saved);
   }
 
-  function createDate(dateC) {
-    let months = ["January", "Feburary", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-    let date = new Date(dateC);
-    return (
-      <p class="smaller">
-        {date.getDate()}. {months[date.getMonth()]} {date.getFullYear()} at {date.getHours()}:{date.getMinutes()}
-      </p>
-    );
+  function onCommentPostet(comment) {
+    setNewComments([...newComments, comment]);
+    setCommentAmount(commentAmount + 1);
   }
 
   return (
@@ -73,24 +150,46 @@ const ChirpedCard = ({ chirpId }) => {
             <div class={style["chirp-back"]} onclick={() => history.back()}>
               <i class="fa-solid fa-arrow-left"></i> Back
             </div>
+            {chirp.type === "Repost" && (
+              <p class={style["chirp-notice"]}>
+                <i class="fa-solid fa-retweet"></i> {chirp.newPublisher.name} rechirped
+              </p>
+            )}
+            {chirp.type === "Like" && (
+              <p class={style["chirp-notice"]}>
+                <i class="fa-regular fa-heart"></i> {chirp.newPublisher.name} liked
+              </p>
+            )}
+            {chirp.type === "Comment" && (
+              <p class={style["chirp-notice"]}>
+                <i class="fa-regular fa-comment"></i> {chirp.post.creator.name} commented on {chirp.replyInformation.creatorName}
+              </p>
+            )}
+            {!!chirp?.replyInformation && <RepliedCard data={chirp.replyInformation} single={true} />}
             <div class={style["chirped-card"]}>
               <div class={style["chirped-card-header"]}>
-                <Link href={"/profile/" + chirp.creator.username}>
-                  <img src={chirp.creator.profilePicture} />
+                <Link href={"/profile/" + chirp.post.creator.username}>
+                  <img src={chirp.post.creator.profilePicture} />
                 </Link>
-                <Link href={"/profile/" + chirp.creator.username} class={style["chirped-card-header-main"]}>
+                <Link href={"/profile/" + chirp.post.creator.username} class={style["chirped-card-header-main"]}>
                   <p>
-                    <strong>{chirp.creator.name}</strong>
+                    <strong>{chirp.post.creator.name}</strong>
                   </p>
-                  <p class="smaller">{createDate(chirp.created)}</p>
+                  <p class="smaller dimmed">{createDate(chirp.created)}</p>
                 </Link>
               </div>
               <div class={style["chirped-card-body"]}>
-                <p>{chirp.text}</p>
+                <p>
+                  {reactStringReplace(chirp.post.text, /(#\w+)/gi, (match, i) => (
+                    <Link href={"/explore/top/" + match.replaceAll("#", "%23")} class="link" onclick={(e) => e.stopPropagation()}>
+                      {match}
+                    </Link>
+                  ))}
+                </p>
               </div>
-              {chirp.images.length > 0 && (
-                <div class={style["chirped-card-pictures"] + " " + (chirp.images.length % 2 === 0 ? style["even"] : style["odd"])}>
-                  {chirp.images.map((img) => (
+              {chirp.post.images.length > 0 && (
+                <div class={style["chirped-card-pictures"] + " " + (chirp.post.images.length % 2 === 0 ? style["even"] : style["odd"])}>
+                  {chirp.post.images.map((img) => (
                     <a class={"chocolat-image-" + chirp.objectId} href={img} title="image caption a">
                       <img src={img} />
                     </a>
@@ -101,40 +200,39 @@ const ChirpedCard = ({ chirpId }) => {
                 <div class={style["interaction-button"] + " " + style["interaction-comment"]} tabindex="0">
                   <i class="fa-regular fa-comment"></i>
                   <div>
-                    <p>{chirp.comments || "0"}</p>
+                    <p>{commentAmount}</p>
                     <p>Comment</p>
                   </div>
                 </div>
-                <div class={style["interaction-button"] + " " + style["interaction-retweet"]} onclick={rechirp} tabindex="0">
+                <div class={style["interaction-button"] + " " + style["interaction-retweet"] + " " + (reposted && "rechirped")} onclick={rechirp} tabindex="0">
                   <i class="fa-solid fa-retweet"></i>{" "}
                   <div>
-                    <p>{chirp.rechirps || "0"}</p>
+                    <p>{repostedAmount}</p>
                     <p>Rechirp</p>
                   </div>
                 </div>
-                <div class={style["interaction-button"] + " " + style["interaction-like"]} onclick={like} tabindex="0">
-                  <i class="fa-regular fa-heart"></i>{" "}
+                <div class={style["interaction-button"] + " " + style["interaction-like"] + " " + (liked && "liked")} onclick={like} tabindex="0">
+                  <i class={"fa-heart " + (liked ? "fa-solid" : "fa-regular")}></i>{" "}
                   <div>
-                    <p>{chirp.likes || "0"}</p>
+                    <p>{likedAmount}</p>
                     <p>Like</p>
                   </div>
                 </div>
                 <div class={style["interaction-button"] + " " + style["interaction-save"]} onclick={save} tabindex="0">
-                  <i class="fa-regular fa-bookmark"></i>{" "}
+                  <i class={"fa-bookmark " + (saved ? "fa-solid" : "fa-regular")}></i>{" "}
                   <div>
-                    <p>{chirp.saves || "0"}</p>
+                    <p>{savedAmount}</p>
                     <p>Bookmark</p>
                   </div>
                 </div>
               </div>
-              {user && (
-                <div class={style["new-comment-cont"]}>
-                  <img src={user.profilePicture} />
-                  <input type="text" placeholder="Chirp your reply" />
-                </div>
+              {user && (!(chirp.post.replyStatus === "followers" && !chirp.followed) || chirp.post.creator.ownerId === user.objectId) && (
+                <ChirpCard user={user} commentOn={{ feedId: chirp.objectId, objectId: chirp.post.postObjectId, onFinish: onCommentPostet }} />
               )}
-              <div class={style["comment-cont"]} style={{overflow: "visible"}}>
+
+              <div class={style["comment-cont"]} style={{ overflow: "visible" }}>
                 <div class={style["sort-comments"]}>
+                  {chirp.post.replyStatus === "followers" && <p class="small dimmed m-0">Followers only</p>}
                   <div class={style["sort-comments-btn"]} onclick={() => setSortStatus(true)}>
                     <i class="fa-solid fa-arrow-down-wide-short"></i> Sort Comments
                   </div>
@@ -152,61 +250,34 @@ const ChirpedCard = ({ chirpId }) => {
                     </div>
                   )}
                 </div>
-                <div style={{textAlign: "center"}} class="accent">Your post received no comments yet</div>
-                {/* <div class={style["comment"]}>
-                  <div>
-                    <div class={style["comment-header"]}>
-                      <img src="https://source.unsplash.com/random/?profile" />
-                      <span class="smaller">
-                        <p class="m-0">
-                          <strong>Hunter Oliver</strong>
-                        </p>{" "}
-                        <p class="dimmed m-0">24. August at 20:43</p>
-                      </span>
-                      <div class={style["comment-likes"] + " smaller"} onclick={like}>
-                        {" "}
-                        <i class="fa-regular fa-heart"></i> 12 Likes
-                      </div>
+                {!!newComments.length && newComments.reverse().map((com) => <CommentCard data={com} user={user} />)}
+                {commentStatus === "success" &&
+                  (!comments.pages[0].length && !newComments.length ? (
+                    <div style={{ textAlign: "center" }} class="accent">
+                      This post received no comments yet
                     </div>
-                    <p class={style["comment-text"]}>
-                      Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.{" "}
-                      <a href="www.ecosia.com" target="_blank">
-                        ecosia.com
-                      </a>
-                    </p>
-                  </div>
+                  ) : (
+                    comments.pages.map((page) => page.map((com) => <CommentCard data={com} user={user} />))
+                  ))}
+                <div ref={loadRef}>
+                  {isFetchingNextPage || commentStatus === "loading" ? (
+                    <Loader />
+                  ) : (
+                    hasNextPage && (
+                      <button class="small" onClick={fetchNextPage}>
+                        Load more
+                      </button>
+                    )
+                  )}
                 </div>
-                <div class={style["comment"]}>
-                  <div>
-                    <div class={style["comment-header"]}>
-                      <img src="https://source.unsplash.com/random/?profile" />
-                      <span class="smaller">
-                        <p class="m-0">
-                          <strong>Hunter Oliver</strong>
-                        </p>{" "}
-                        <p class="dimmed m-0">24. August at 20:43</p>
-                      </span>
-                      <div class={style["comment-likes"] + " smaller"} onclick={like}>
-                        {" "}
-                        <i class="fa-regular fa-heart"></i> 12 Likes
-                      </div>
-                    </div>
-                    <p class={style["comment-text"]}>
-                      Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.{" "}
-                      <a href="www.ecosia.com" target="_blank">
-                        ecosia.com
-                      </a>
-                    </p>
-                  </div>
-                </div>*/}
-              </div> 
+              </div>
             </div>
           </div>
         ) : (
           <div>Chirp not found</div>
         )
       ) : (
-        <div>Loading</div>
+        <Loader />
       )}
       <div class={style["right-column"]}>
         <div class="card">
@@ -292,7 +363,7 @@ const ChirpedCard = ({ chirpId }) => {
           )} */}
         </div>
         <p class="smaller dimmed">
-          {/* 2021 - {new Date().getFullYear()} |{" "} */}
+          2021 - {new Date().getFullYear()} |{" "}
           <a href="https://github.com/LucaswithC" target="_blank">
             © Lucas Kiers
           </a>
