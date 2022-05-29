@@ -49,7 +49,7 @@ const Nav = () => {
             <div class={style["icon-input"]}>
               <i class="fa-solid fa-magnifying-glass"></i>
               <form onSubmit={searchRedirect}>
-                <input name="searchInput" type="search" placeholder="#green" class={style["nav-search"]}></input>
+                <input name="searchInput" type="search" placeholder="#great" class={style["nav-search"]}></input>
               </form>
             </div>
             <Link href="/explore/top" class={style["nav-search-mobile"]}>

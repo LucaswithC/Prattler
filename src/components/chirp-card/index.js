@@ -1,6 +1,6 @@
 import { h } from "preact";
 import style from "./style.css";
-import { useEffect, useState } from "preact/hooks";
+import { useEffect, useState, useRef } from "preact/hooks";
 import { useQueryClient } from "react-query";
 
 import ppPlaceholder from "../../assets/icons/pp_placeholder.svg";
@@ -11,6 +11,8 @@ import toastError from "../toasts/error";
 import toastSuccess from "../toasts/success";
 import { route } from "preact-router";
 
+import useClickOutside from "use-click-outside";
+
 const ChirpCard = ({ user, commentOn }) => {
   const queryClient = useQueryClient();
   const [replyStatus, setReplyStatus] = useState(false);
@@ -19,6 +21,9 @@ const ChirpCard = ({ user, commentOn }) => {
   const [uploadImg, setUploadImg] = useState([]);
   const [uploadImgStatus, setUploadStatus] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const replyRef = useRef()
+  useClickOutside(replyRef, () => {if(replyStatus) setReplyStatus(false)});
 
   function chirpTextbox(e) {
     if (e.target.scrollHeight > e.target.clientHeight) e.target.style.height = e.target.scrollHeight + "px";
@@ -274,7 +279,7 @@ const ChirpCard = ({ user, commentOn }) => {
                   onInput={(e) => previewImage(e.target.files)}
                 />
                 <label for="chirp-img-id" class={"pointer " + style["img-label"]}>
-                  <i class="fa-solid fa-photo-film"></i>
+                  <i class="fa-solid fa-images"></i>
                 </label>
                 <div class={style["chirp-reply"]}>
                   {replySetting === "everyone" ? (
@@ -287,7 +292,7 @@ const ChirpCard = ({ user, commentOn }) => {
                     </div>
                   )}
                   {replyStatus && (
-                    <div class={style["reply-setting"]} onMouseLeave={() => setReplyStatus(false)}>
+                    <div ref={replyRef} class={style["reply-setting"]}>
                       <strong>Who can reply?</strong>
                       <span>Choose who can reply to this Chirp</span>
                       <div

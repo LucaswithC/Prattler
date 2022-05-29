@@ -10,6 +10,10 @@
     transition: .2s;
 }
 
+.reply-cont.removed {
+    padding: 10px 20px;
+}
+
 .single {
     margin-top: 0px;
     margin-bottom: 10px;
@@ -32,6 +36,10 @@
 
 .reply-right {
     flex-grow: 1;
+}
+
+.removed {
+    filter: brightness(0.9) opacity(.9) grayscale(1)
 }
 
 @media (max-width: 850px) {

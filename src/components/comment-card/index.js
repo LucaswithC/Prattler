@@ -4,20 +4,12 @@ import { route, Link } from "preact-router";
 
 import Chocolat from "chocolat";
 
+import createDate from "../other/date";
+
 const CommentCard = ({ data, user }) => {
     const [id, setId] = useState(String(Math.round(Math.random() * 100000)))
     const [liked, setLiked] = useState(data.post.liked)
     const [likedAmount, setLikedAmount] = useState(data.post.totalLikes || 0)
-
-    function createDate(dateC) {
-        let months = ["January", "Feburary", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-        let date = new Date(dateC);
-        return (
-          <p class="smaller m-0">
-            {date.getDate()}. {months[date.getMonth()]} {date.getFullYear()} at {date.getHours()}:{date.getMinutes()}
-          </p>
-        );
-      }
 
       useEffect(() => {
           if (typeof window !== "undefined")  {
@@ -56,7 +48,7 @@ const CommentCard = ({ data, user }) => {
             <p class="m-0">
               <strong>{data.post.creator.name}</strong>
             </p>
-            <p class="dimmed m-0">{createDate(data.created)}</p>
+            <p class="dimmed m-0 smaller">{createDate(data.created)}</p>
           </Link>
           <div class={style["comment-likes"] + " smaller " + (liked && "liked")} onClick={likePost}>
             <i class={"fa-heart " + (liked ? "fa-solid" : "fa-regular")}></i> {likedAmount} {likedAmount === 1 ? "Like" : "Likes"}

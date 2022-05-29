@@ -226,7 +226,7 @@
 
 .reply-setting {
     position: absolute;
-    top: calc(100% + 30px);
+    top: calc(100% + 10px);
     left: 0;
     background: rgb(var(--grey-8));
     padding: 15px;

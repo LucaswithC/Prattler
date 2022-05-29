@@ -35,7 +35,8 @@
     "react-query": "^3.34.16",
     "react-string-replace": "^1.1.0",
     "react-toastify": "^8.2.0",
-    "url-encode-decode": "^1.0.0"
+    "url-encode-decode": "^1.0.0",
+    "use-click-outside": "^2.0.0"
   },
   "jest": {
     "preset": "jest-preset-preact",

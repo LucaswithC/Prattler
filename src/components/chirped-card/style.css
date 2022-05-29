@@ -33,11 +33,16 @@
     align-self: flex-start;
     flex-grow: 1;
     text-align: end;
+    opacity: 0;
 }
 
 .chirped-extra-menu i {
     padding: 0 10px;
     margin-right: -10px;
+}
+
+.chirped-card:hover .chirped-extra-menu, .extra-open {
+    opacity: 1;
 }
 
 .chirped-extra-dropdown {

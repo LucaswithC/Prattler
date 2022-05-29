@@ -65,25 +65,6 @@ const Profile = ({ userFilter, filter }) => {
       enabled: !!user,
     }
   );
-  // const {
-  //   status: chirpsStatusOld,
-  //   data: chirpsDataOld,
-  //   error: chirpsError,
-  // } = useQuery(
-  //   [userFilter + "-Chirps-" + (filter || "all"), user],
-  //   async () => {
-  //     let filterQuery = {};
-  //     filterQuery.whereClause = [`ownerId='${user.objectId}'`];
-  //     if (!filter) filterQuery.whereClause.push("type in ('Post', 'Repost')");
-  //     else if (filter === "replies") filterQuery.whereClause.push("type in ('Post', 'Comment', 'Repost')");
-  //     else if (filter === "media") filterQuery.whereClause.push(`post.images->'$[0]' != null and type = 'Post'`);
-  //     else if (filter === "likes") filterQuery.whereClause.push("type = 'Like'");
-  //     return Backendless.APIServices.Posts.getAll(filterQuery);
-  //   },
-  //   {
-  //     enabled: !!user,
-  //   }
-  // );
 
   const [modalState, setModalState] = useState(false);
   const [modalType, setModalType] = useState("follower");
@@ -295,7 +276,7 @@ const Profile = ({ userFilter, filter }) => {
               </div>
             </div>
           </div>
-          {userFilter === "me" && <EditProfile oldUser={user} editStatus={editStatus} closeEdit={closeEdit} setUser={setUser} />}
+          {(userFilter === "me" || user.objectId === curUser.objectId) && <EditProfile oldUser={user} editStatus={editStatus} closeEdit={closeEdit} setUser={setUser} />}
         </div>
       )}
     </div>
@@ -336,7 +317,7 @@ const UserFollow = ({ followUser, curUser, closeModal }) => {
 
   async function follow(e) {
     e.stopPropagation();
-
+    e.preventDefault()
     let newUser = { ...user };
     newUser.followers = user.followed ? user.followers - 1 : user.followers + 1;
     newUser.followed = !user.followed;
@@ -361,28 +342,27 @@ const UserFollow = ({ followUser, curUser, closeModal }) => {
   }
 
   return (
-    <div class={style["follower-item"]}>
-      <Link href={"/profile/" + followUser.username} class={style["follower-item-main"]}>
+    <Link href={"/profile/" + followUser.username} class={style["follower-item"]}>
+      <div class={style["follower-item-main"]}>
         <div onClick={closeModal}>
           <div class={style["follower-header"]}>
             <img src={user.profilePicture} />
             <div>
               <p class="m-0">
-                <strong>{user.name}</strong>
+                <strong>{user.name}</strong><span class="m-0 smaller dimmed"> | {user.followers} Followers</span>
               </p>
-              <p class="m-0 smaller dimmed">{user.followers} Followers</p>
+              <p class="dimmed m-0 small">{user.bio}</p>
             </div>
           </div>
-          <p class="dimmed">{user.bio}</p>
         </div>
-      </Link>
+      </div>
       <div>
         {followUser.objectId !== curUser.objectId && (
           <button class={user.followed && "sec"} onClick={follow}>
-            <i class="fa-solid fa-user-plus"></i> {user.followed ? "Unfollow" : "Follow"}
+            {!user.followed && <i class="fa-solid fa-user-plus"></i>} {user.followed ? "Unfollow" : "Follow"}
           </button>
         )}
       </div>
-    </div>
+    </Link>
   );
 };

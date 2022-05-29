@@ -45,7 +45,7 @@ const Profile = ({ searchTerm, filter }) => {
       }
       filterQuery.whereClause = ["type in ('Post', 'Comment')"];
       if (searchTerm) filterQuery.whereClause.push(`post.text LIKE '%${searchTerm}%'`);
-      if (filter === "top") filterQuery.sortBy = "totalLikes DESC";
+      if (filter === "top") filterQuery.sortBy = "post.likes DESC";
       else if (filter === "latest") filterQuery.sortBy = "created DESC";
       else if (filter === "media") filterQuery.whereClause.push("post.images->'$[0]' != null");
       return Backendless.APIServices.Posts.getAll(filterQuery);
@@ -54,24 +54,6 @@ const Profile = ({ searchTerm, filter }) => {
       getNextPageParam: (lastPage, pages) => (lastPage.length === 20 ? pages.length * 20 : undefined),
     }
   );
-  // const {
-  //   status: expStatusOld,
-  //   data: expDataOld,
-  //   error: expError,
-  // } = useQuery([filter + "-Explore", searchTerm], async () => {
-  //   if (filter === "people") {
-  //     let filterQuery = { sortBy: "Count(followers) DESC" };
-  //     if (searchTerm) filterQuery.whereClause = [`name LIKE '%${searchTerm}%' or username LIKE '%${searchTerm}%'`];
-  //     return Backendless.APIServices.Users.getAllUsers(filterQuery);
-  //   }
-  //   let filterQuery = {};
-  //   filterQuery.whereClause = ["type in ('Post', 'Comment')"];
-  //   if (searchTerm) filterQuery.whereClause.push(`post.text LIKE '%${searchTerm}%'`);
-  //   if (filter === "top") filterQuery.sortBy = "totalLikes DESC";
-  //   else if (filter === "latest") filterQuery.sortBy = "created DESC";
-  //   else if (filter === "media") filterQuery.whereClause.push("post.images->'$[0]' != null");
-  //   return await Backendless.APIServices.Posts.getAll(filterQuery);
-  // });
 
   function sendSearch(e) {
     e.preventDefault();
@@ -103,16 +85,16 @@ const Profile = ({ searchTerm, filter }) => {
       )}
       <div class={"container " + style.explore}>
         <div class={"card " + style["filter-card"]}>
-          <Link href={"/explore/top" + (searchInput && "/" + searchInput)} activeClassName={style.active} class={style["filter-out"]}>
+          <Link href={"/explore/top" + (searchInput && "/" + encode(searchInput))} activeClassName={style.active} class={style["filter-out"]}>
             <strong>Top</strong>
           </Link>
-          <Link href={"/explore/latest" + (searchInput && "/" + searchInput)} activeClassName={style.active} class={style["filter-out"]}>
+          <Link href={"/explore/latest" + (searchInput && "/" + encode(searchInput))} activeClassName={style.active} class={style["filter-out"]}>
             <strong>Latest</strong>
           </Link>
-          <Link href={"/explore/people" + (searchInput && "/" + searchInput)} activeClassName={style.active} class={style["filter-out"]}>
+          <Link href={"/explore/people" + (searchInput && "/" + encode(searchInput))} activeClassName={style.active} class={style["filter-out"]}>
             <strong>People</strong>
           </Link>
-          <Link href={"/explore/media" + (searchInput && "/" + searchInput)} activeClassName={style.active} class={style["filter-out"]}>
+          <Link href={"/explore/media" + (searchInput && "/" + encode(searchInput))} activeClassName={style.active} class={style["filter-out"]}>
             <strong>Media</strong>
           </Link>
         </div>
@@ -129,7 +111,7 @@ const Profile = ({ searchTerm, filter }) => {
             (expData.pages[0].length === 0 ? (
               <p class="loader-outer accent">{filter === "people" ? "No accounts found" : "No posts found"}</p>
             ) : filter === "people" ? (
-              expData.pages.map((page) => page.map((person) => <ExpPeople user={person} />))
+              expData.pages.map((page) => page.map((person) => <ExpPeople user={person} curUser={user} />))
             ) : (
               expData.pages.map((page) => page.map((chirp) => <ChirpedCard data={chirp} user={user} />))
             ))}

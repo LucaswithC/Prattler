@@ -22,6 +22,15 @@
       return Backendless.APIServices.invoke('Posts', 'addPost', args)
     },
   
+    removePost(postId) {   
+      if (!Utils.isString(postId)) {
+        throw new Error('Invalid value for argument "postId". Must be string value')
+      }
+      
+      const args = postId
+      return Backendless.APIServices.invoke('Posts', 'removePost', args)
+    },
+  
     getAll(filter) {   
       if (!Utils.isObject(filter)) {
         throw new Error('Invalid value for argument "filter". Must be object value')
@@ -71,19 +80,20 @@
       return Backendless.APIServices.invoke('Posts', 'addPostComment', args)
     },
   
-    getPostComments(postId, filter) {   
+    getPostComments(postId,filter) {   
       if (!Utils.isString(postId)) {
         throw new Error('Invalid value for argument "postId". Must be string value')
       }
-
+        
       if (!Utils.isObject(filter)) {
         throw new Error('Invalid value for argument "filter". Must be object value')
       }
       
       const args = {
         postId: postId,
-        filter: filter
+          filter: filter
       }
+        
       return Backendless.APIServices.invoke('Posts', 'getPostComments', args)
     },
   
@@ -112,6 +122,42 @@
       
       const args = postId
       return Backendless.APIServices.invoke('Posts', 'repost', args)
+    },
+  
+    removeRepost(postId) {   
+      if (!Utils.isString(postId)) {
+        throw new Error('Invalid value for argument "postId". Must be string value')
+      }
+      
+      const args = postId
+      return Backendless.APIServices.invoke('Posts', 'removeRepost', args)
+    },
+  
+    savePost(postId) {   
+      if (!Utils.isString(postId)) {
+        throw new Error('Invalid value for argument "postId". Must be string value')
+      }
+      
+      const args = postId
+      return Backendless.APIServices.invoke('Posts', 'savePost', args)
+    },
+  
+    unsavePost(postId) {   
+      if (!Utils.isString(postId)) {
+        throw new Error('Invalid value for argument "postId". Must be string value')
+      }
+      
+      const args = postId
+      return Backendless.APIServices.invoke('Posts', 'unsavePost', args)
+    },
+  
+    getSaved(filter) {   
+      if (!Utils.isObject(filter)) {
+        throw new Error('Invalid value for argument "filter". Must be object value')
+      }
+      
+      const args = filter
+      return Backendless.APIServices.invoke('Posts', 'getSaved', args)
     },
   
     trendingHashtags() { 

@@ -1,6 +1,6 @@
 import { h } from "preact";
 import style from "./style.css";
-import { useEffect, useState } from "preact/hooks";
+import { useEffect, useState, useRef } from "preact/hooks";
 
 import Chocolat from "chocolat";
 import { useQuery, useInfiniteQuery } from "react-query";
@@ -12,16 +12,20 @@ import RepliedCard from "../../components/replied-card";
 import useInView from "../../components/other/inView";
 
 import toastError from "../../components/toasts/error";
+import toastSuccess from "../../components/toasts/success";
 
 import reactStringReplace from "react-string-replace";
 import Loader from "../../components/loader/loader";
 
 import createDate from "../../components/other/date";
 
+import useClickOutside from 'use-click-outside';
+
 const ChirpedCard = ({ chirpId }) => {
-  const [sortStatus, setSortStatus] = useState(false);
   const [replySetting, setReplySetting] = useState("everyone");
   const { isInView: loadInView, inViewRef: loadRef } = useInView();
+  const [sortComments, setSortComments] = useState("top")
+
   const {
     status: userStatus,
     data: user,
@@ -35,6 +39,8 @@ const ChirpedCard = ({ chirpId }) => {
     error: chirpError,
   } = useQuery("chirp-" + chirpId, async () => {
     return Backendless.APIServices.Posts.getSinglePost(chirpId);
+  }, {
+    retry: false
   });
   const {
     status: commentStatus,
@@ -43,38 +49,46 @@ const ChirpedCard = ({ chirpId }) => {
     fetchNextPage,
     hasNextPage,
   } = useInfiniteQuery(
-    ["chirp-comments-" + chirpId, chirp],
+    ["chirp-comments-" + chirpId, chirp, sortComments],
     async ({ pageParam = 0 }) => {
-      return Backendless.APIServices.Posts.getPostComments(chirp.post.postObjectId, { pageSize: 20, pageOffset: pageParam });
+      let sortBy;
+      switch (sortComments) {
+        case "newest":
+          sortBy = "post.created DESC"
+          break;
+        case "oldest":
+          sortBy = "post.created"
+          break;
+        default:
+          sortBy = "Count(post.likes) DESC"
+          break;
+      }
+      return Backendless.APIServices.Posts.getPostComments(chirp.post.postObjectId, { pageSize: 20, pageOffset: pageParam, sortBy  });
     },
     {
       getNextPageParam: (lastPage, pages) => (lastPage.length === 20 ? pages.length * 20 : undefined),
       enabled: !!chirp,
     }
   );
-  // const {
-  //   status: commentStatusOld,
-  //   data: commentsOld,
-  //   error: commentError,
-  // } = useQuery(
-  //   ["chirp-comments-" + chirpId, chirp],
-  //   async () => {
-  //     return Backendless.APIServices.Posts.getPostComments(chirp.post.postObjectId);
-  //   },
-  //   {
-  //     enabled: !!chirp,
-  //   }
-  // );
 
   const [newComments, setNewComments] = useState([]);
 
   const [commentAmount, setCommentAmount] = useState(0);
-  const [liked, setLiked] = useState(0);
+  const [liked, setLiked] = useState(false);
   const [likedAmount, setLikedAmount] = useState(0);
-  const [reposted, setReposted] = useState(0);
+  const [reposted, setReposted] = useState(false);
   const [repostedAmount, setRepostedAmount] = useState(0);
-  const [saved, setSaved] = useState(0);
+  const [saved, setSaved] = useState(false);
   const [savedAmount, setSavedAmount] = useState(0);
+
+  const [extraMenu, setExtraMenu] = useState(false);
+  const [sortStatus, setSortStatus] = useState(false);
+
+  const extraMenuRef = useRef();
+  const extraMenuCom = useRef();
+
+  useClickOutside(extraMenuRef, () => {if(extraMenu) setExtraMenu(false)});
+  useClickOutside(extraMenuCom, () => {if(sortStatus) setSortStatus(false)});
 
   useEffect(() => {
     if (chirpStatus === "success") {
@@ -87,11 +101,11 @@ const ChirpedCard = ({ chirpId }) => {
         }
         setLiked(chirp.post?.liked);
         setReposted(chirp.post?.reposted);
-        setSaved(chirp.post?.saved);
+        setSaved(chirp.saved);
         setCommentAmount(chirp.post?.totalComments || 0);
         setLikedAmount(chirp.post?.totalLikes || 0);
         setRepostedAmount(chirp.post?.totalRepost || 0);
-        setSavedAmount(chirp.post?.totalSaved || 0);
+        setSavedAmount(chirp.totalSaved || 0);
       }
     }
   }, [chirpStatus, chirp]);
@@ -133,8 +147,39 @@ const ChirpedCard = ({ chirpId }) => {
     }
   }
 
-  function save(e) {
+  async function save(e) {
     setSaved(!saved);
+    if (!saved) {
+      setSavedAmount(savedAmount + 1);
+      await Backendless.APIServices.Posts.savePost(chirp.objectId).catch((err) => {
+        setSaved(!saved);
+        setSavedAmount(savedAmount - 1);
+        toastError(err.message);
+      });
+    } else {
+      setSavedAmount(savedAmount - 1);
+      await Backendless.APIServices.Posts.unsavePost(chirp.objectId).catch((err) => {
+        setSaved(!saved);
+        setSavedAmount(savedAmount + 1);
+        toastError(err.message);
+      });
+    }
+  }
+
+  function removeChirp(e) {
+    e.stopPropagation();
+    if (typeof window !== "undefined") {
+      if (window.confirm("Do you really want to delete your Chirp?")) {
+        Backendless.APIServices.Posts.removePost(chirp.post.postObjectId)
+          .then((res) => {
+            toastSuccess("Chirp successful removed");
+            history.back()
+          })
+          .catch((err) => {
+            toastError("Something went wrong");
+          });
+      }
+    }
   }
 
   function onCommentPostet(comment) {
@@ -175,11 +220,29 @@ const ChirpedCard = ({ chirpId }) => {
                   <p>
                     <strong>{chirp.post.creator.name}</strong>
                   </p>
-                  <p class="smaller dimmed">{createDate(chirp.created)}</p>
+                  <p class="smaller dimmed">{createDate(chirp.post.created)}</p>
                 </Link>
+                {user?.username === chirp.post.creator.username && (
+                  <div class={style["chirped-extra-menu"]}>
+                    <i
+                      class="fa-solid fa-ellipsis-vertical pointer"
+                      onclick={(e) => {
+                        e.stopPropagation();
+                        setExtraMenu(true);
+                      }}
+                    ></i>
+                    {extraMenu && (
+                      <div ref={extraMenuRef} class={style["chirped-extra-dropdown"]}>
+                        <div class="red" onclick={removeChirp}>
+                          Remove
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
               <div class={style["chirped-card-body"]}>
-                <p>
+                <p class="text-pre-wrap">
                   {reactStringReplace(chirp.post.text, /(#\w+)/gi, (match, i) => (
                     <Link href={"/explore/top/" + match.replaceAll("#", "%23")} class="link" onclick={(e) => e.stopPropagation()}>
                       {match}
@@ -237,14 +300,14 @@ const ChirpedCard = ({ chirpId }) => {
                     <i class="fa-solid fa-arrow-down-wide-short"></i> Sort Comments
                   </div>
                   {sortStatus && (
-                    <div class={style["sort-comments-selection"]} onMouseLeave={() => setSortStatus(false)}>
-                      <div onclick={() => setSortStatus(false)}>
+                    <div class={style["sort-comments-selection"]} ref={extraMenuCom}>
+                      <div onclick={() => {setSortComments("top"); setSortStatus(false)}}>
                         <i class="fa-solid fa-heart"></i> Popularity
                       </div>
-                      <div onclick={() => setSortStatus(false)}>
+                      <div onclick={() => {setSortComments("newest"); setSortStatus(false)}}>
                         <i class="fa-solid fa-clock"></i> Newest first
                       </div>
-                      <div onclick={() => setSortStatus(false)}>
+                      <div onclick={() => {setSortComments("oldest"); setSortStatus(false)}}>
                         <i class="fa-solid fa-clock-rotate-left"></i> Oldest first
                       </div>
                     </div>
@@ -276,8 +339,9 @@ const ChirpedCard = ({ chirpId }) => {
         ) : (
           <div>Chirp not found</div>
         )
-      ) : (
-        <Loader />
+      ) : chirpStatus === 'error' ? 
+      (<p class="accent text-center">Post not found</p>) 
+      : ( <Loader />
       )}
       <div class={style["right-column"]}>
         <div class="card">

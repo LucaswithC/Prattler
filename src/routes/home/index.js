@@ -132,33 +132,14 @@ const Home = () => {
                 </div>
               </div>
             )}
-            {homeUser && (
+            {homeUserStatus === "success" && homeUser.length > 0 && (
               <div class="card">
                 <div class="card-header">
                   <strong class="smaller">Who to follow</strong>
                 </div>
                 <div class="card-body">
                   {homeUser.map((user) => (
-                    <Link href={"/profile/" + user.username} class={style["follow-card"]}>
-                      <img class={style["follow-banner"]} src={user.banner || bannerPlaceholder} />
-                      <img class={style["follow-profile-picture"]} src={user.profilePicture || ppPlaceholder} />
-                      <div class={style["follow-head"]}>
-                        <div class={style["follow-name"]}>
-                          <p class="m-0">
-                            <strong>{user.name || user.username}</strong>
-                          </p>
-                          <p class="smaller m-0">{user.followers} Follower</p>
-                        </div>
-                        {user.followed ? (
-                          <button class="small sec">Unfollow</button>
-                        ) : (
-                          <button class="small">
-                            <i class="fa-solid fa-user-plus"></i> Follow
-                          </button>
-                        )}
-                      </div>
-                      {user.bio && <p class={style["card-bio"]}>{user.bio}</p>}
-                    </Link>
+                    <HomeUserBox user={user} />
                   ))}
                 </div>
               </div>
@@ -193,3 +174,51 @@ const Home = () => {
 };
 
 export default Home;
+
+const HomeUserBox = ({ user }) => {
+  const [followers, setFollowers] = useState(user.followers);
+  const [followed, setFollowed] = useState(user.followed);
+
+  async function follow(e) {
+    e.preventDefault()
+    e.stopPropagation()
+    setFollowers(followed ? followers - 1 : followers + 1)
+    setFollowed(!followed)
+    if (!followed) {
+      await Backendless.APIServices.Users.followUser(user.objectId).catch((err) => {
+        setFollowed(!followed)
+        setFollowers(followers - 1)
+        toastError(err);
+      });
+    } else {
+      await Backendless.APIServices.Users.unfollowUser(user.objectId).catch((err) => {
+        setFollowed(!followed)
+        setFollowers(followers + 1)
+        toastError(err);
+      });
+    }
+  }
+
+  return (
+    <Link href={"/profile/" + user.username} class={style["follow-card"]}>
+      <img class={style["follow-banner"]} src={user.banner || bannerPlaceholder} />
+      <img class={style["follow-profile-picture"]} src={user.profilePicture || ppPlaceholder} />
+      <div class={style["follow-head"]}>
+        <div class={style["follow-name"]}>
+          <p class="m-0">
+            <strong>{user.name || user.username}</strong>
+          </p>
+          <p class="smaller m-0">{followers} Follower</p>
+        </div>
+        {followed ? (
+          <button class="small sec" onClick={follow}>Unfollow</button>
+        ) : (
+          <button class="small" onClick={follow}>
+            <i class="fa-solid fa-user-plus"></i> Follow
+          </button>
+        )}
+      </div>
+      {user.bio && <p class={style["card-bio"] + " m-0 mt-05"}>{user.bio}</p>}
+    </Link>
+  );
+};

@@ -1,6 +1,6 @@
 import { h } from "preact";
 import style from "./style.css";
-import { useEffect, useState } from "preact/hooks";
+import { useEffect, useState, useRef } from "preact/hooks";
 import { route, Link } from "preact-router";
 import Chocolat from "chocolat";
 import { useQueryClient } from "react-query";
@@ -16,6 +16,8 @@ import RepliedCard from "../replied-card";
 
 import createDate from "../other/date";
 
+import useClickOutside from 'use-click-outside';
+
 const { encode, decode } = require("url-encode-decode");
 
 const ChirpedCard = ({ data, user }) => {
@@ -28,10 +30,15 @@ const ChirpedCard = ({ data, user }) => {
   const [likedAmount, setLikedAmount] = useState(data.post.totalLikes || 0);
   const [reposted, setReposted] = useState(data.post.reposted || false);
   const [repostedAmount, setRepostedAmount] = useState(data.post.totalRepost || 0);
-  const [saved, setSaved] = useState(data.post.saved || false);
-  const [savedAmount, setSavedAmount] = useState(data.post.totalSaves || 0);
+  const [saved, setSaved] = useState(data.saved || false);
+  const [savedAmount, setSavedAmount] = useState(data.totalSaved || 0);
 
   const [extraMenu, setExtraMenu] = useState(false);
+  const extraMenuRef = useRef()
+
+  useClickOutside(extraMenuRef, () => {if(extraMenu) setExtraMenu(false)});
+
+  const [newComments, setNewComments] = useState([]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -46,16 +53,21 @@ const ChirpedCard = ({ data, user }) => {
   }
 
   async function rechirp(e) {
+    setReposted(!reposted);
     if (!reposted) {
-      setReposted(!reposted);
-      setRepostedAmount(likedAmount + 1);
+      setRepostedAmount(repostedAmount + 1);
       await Backendless.APIServices.Posts.repost(data.post.postObjectId).catch((err) => {
         setReposted(!liked);
         setRepostedAmount(likedAmount - 1);
         toastError(err.message);
       });
     } else {
-      toastError("Delete your Post to remove the repost");
+      setRepostedAmount(repostedAmount - 1);
+      await Backendless.APIServices.Posts.removeRepost(data.post.postObjectId).catch((err) => {
+        setReposted(!liked);
+        setRepostedAmount(repostedAmount + 1);
+        toastError(err.message);
+      });
     }
   }
 
@@ -78,8 +90,23 @@ const ChirpedCard = ({ data, user }) => {
     }
   }
 
-  function save(e) {
+  async function save(e) {
     setSaved(!saved);
+    if (!saved) {
+      setSavedAmount(savedAmount + 1);
+      await Backendless.APIServices.Posts.savePost(data.objectId).catch((err) => {
+        setSaved(!saved);
+        setSavedAmount(savedAmount - 1);
+        toastError(err.message);
+      });
+    } else {
+      setSavedAmount(savedAmount - 1);
+      await Backendless.APIServices.Posts.unsavePost(data.objectId).catch((err) => {
+        setSaved(!saved);
+        setSavedAmount(savedAmount + 1);
+        toastError(err.message);
+      });
+    }
   }
 
   function openChirp(id) {
@@ -88,26 +115,25 @@ const ChirpedCard = ({ data, user }) => {
     }
   }
 
-  function deleteChirp(e) {
+  function removeChirp(e) {
     e.stopPropagation();
     if (typeof window !== "undefined") {
       if (window.confirm("Do you really want to delete your Chirp?")) {
-        Backendless.Data.of("Chirps")
-          .remove({ objectId: data.objectId })
-          .then(function (timestamp) {
-            console.log(timestamp);
-            toastSuccess("Chirp successful deleted");
+        Backendless.APIServices.Posts.removePost(data.post.postObjectId)
+          .then((res) => {
+            toastSuccess("Chirp successful removed");
             setDeleted(true);
           })
-          .catch(function (error) {
-            console.log(error);
+          .catch((err) => {
             toastError("Something went wrong");
           });
       }
     }
   }
 
-  function onCommentPostet(comment) {}
+  function onCommentPostet(comment) {
+    setNewComments([...newComments, comment]);
+  }
 
   return (
     !deleted && (
@@ -127,9 +153,7 @@ const ChirpedCard = ({ data, user }) => {
             <i class="fa-regular fa-comment"></i> {data.post.creator.name} commented on {data.replyInformation.creatorName}
           </p>
         )}
-        {!!data?.replyInformation && (
-          <RepliedCard data={data.replyInformation} />
-        )}
+        {!!data?.replyInformation && <RepliedCard data={data.replyInformation} />}
         <div class={style["chirped-card"]} onclick={() => openChirp(data.objectId)}>
           <div class={style["chirped-card-header"]}>
             <Link href={"/profile/" + data.post.creator.username}>
@@ -139,10 +163,10 @@ const ChirpedCard = ({ data, user }) => {
               <p>
                 <strong>{data.post.creator.name || data.post.creator.username}</strong>
               </p>
-              <p class="smaller dimmed">{createDate(data.created)}</p>
+              <p class="smaller dimmed">{createDate(data.post.created)}</p>
             </Link>
             {user?.username === data.post.creator.username && (
-              <div class={style["chirped-extra-menu"]}>
+              <div class={style["chirped-extra-menu"] + " " + (extraMenu && style["extra-open"])}>
                 <i
                   class="fa-solid fa-ellipsis-vertical pointer"
                   onclick={(e) => {
@@ -151,9 +175,9 @@ const ChirpedCard = ({ data, user }) => {
                   }}
                 ></i>
                 {extraMenu && (
-                  <div class={style["chirped-extra-dropdown"]} onMouseLeave={() => setExtraMenu(false)}>
-                    <div class="red" onclick={deleteChirp}>
-                      Delete
+                  <div ref={extraMenuRef} class={style["chirped-extra-dropdown"]}>
+                    <div class="red" onclick={removeChirp}>
+                      Remove
                     </div>
                   </div>
                 )}
@@ -161,7 +185,7 @@ const ChirpedCard = ({ data, user }) => {
             )}
           </div>
           <div class={style["chirped-card-body"]}>
-            <p>
+            <p class="text-pre-wrap">
               {reactStringReplace(data.post.text, /(#\w+)/gi, (match, i) => (
                 <Link href={"/explore/top/" + encode(match)} class="link" onclick={(e) => e.stopPropagation()}>
                   {match}
@@ -210,7 +234,27 @@ const ChirpedCard = ({ data, user }) => {
               </div>
             </div>
           </div>
-          {user && (!(data.post.replyStatus === "followers" && !data.followed) || (data.post.creator.ownerId === user.objectId)) && <ChirpCard user={user} commentOn={{ feedId: data.objectId, objectId: data.post.postObjectId, onFinish: onCommentPostet }} />}
+          {user && (!(data.post.replyStatus === "followers" && !data.followed) || data.post.creator.ownerId === user.objectId) && (
+            <ChirpCard user={user} commentOn={{ feedId: data.objectId, objectId: data.post.postObjectId, onFinish: onCommentPostet }} />
+          )}
+          <div class={style["comment-cont"]}>
+            {newComments.reverse().map((com) => (
+            <Link href={"/chirp/" + com.objectId} class={style["comment"]}>
+                <img src={com.post.creator.profilePicture || ppPlaceholder} />
+                <div>
+                  <div class={style["comment-header"]}>
+                    <span class="smaller">
+                      <strong>{com.post.creator.name || com.post.creator.username}</strong> <span class="dimmed">{createDate(com.post.created)}</span>
+                    </span>
+                  </div>
+                  <p class={"smaller m-0 " + style["comment-text"]}>{com.post.text}</p>
+                  {/* <div class={style["comment-likes"] + " smaller"}>
+                  <i class="fa-regular fa-heart"></i> 12 Likes
+                </div> */}
+                </div>
+              </Link>
+            ))}
+          </div>
           {/* <div class={style["comment-cont"]}>
             <div class={style["comment"]}>
               <img src="https://source.unsplash.com/random/?profile" />

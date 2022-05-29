@@ -27,16 +27,14 @@
 }
 
 .chirped-card-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
     padding-bottom: 10px;
 }
 
-.chirped-card-header {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-}
-
 .chirped-card-header-main {
+    align-self: center;
     flex-grow: 1;
     padding-right: 10px;
     display: flex;
@@ -299,4 +297,50 @@
     .interaction-save {
         margin-left: auto;
     }
+}
+
+.chirped-extra-menu {
+    position: relative;
+    align-self: flex-start;
+    flex-grow: 1;
+    text-align: end;
+}
+
+.chirped-extra-menu i {
+    padding: 0 10px;
+    margin-right: -10px;
+}
+
+.chirped-extra-dropdown {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    background: rgb(var(--grey-8));
+    padding: 5px;
+    color: rgb(var(--grey-0));
+    border: 1px solid rgb(var(--grey-5));
+    border-radius: 10px;
+    font-size: 0.9rem;
+    width: 250px;
+    text-align: start;
+}
+
+.chirped-extra-dropdown div {
+    display: block;
+    padding: 10px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.chirped-extra-dropdown div:hover {
+    background: rgb(var(--grey-7));
+}
+
+@media (prefers-color-scheme: dark) {
+    .chirped-extra-dropdown {
+        background: rgb(var(--grey-7));
+    }
+    .chirped-extra-dropdown div:hover {
+        background: rgb(var(--grey-8));
+    } 
 }
