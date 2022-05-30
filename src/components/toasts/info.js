@@ -1,7 +1,7 @@
 import { toast } from 'react-toastify';
 
 export default function toastInfo(msg) {
-toast.error(msg, {
+toast.info(msg, {
     position: "bottom-center",
     autoClose: 5000,
     hideProgressBar: false,

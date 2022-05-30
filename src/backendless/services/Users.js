@@ -13,6 +13,15 @@
   }
   
   Backendless.APIServices.Users = {
+    signupUser(userInfo) {   
+      if (!Utils.isObject(userInfo)) {
+        throw new Error('Invalid value for argument "userInfo". Must be object value')
+      }
+      
+      const args = userInfo
+      return Backendless.APIServices.invoke('Users', 'signupUser', args)
+    },
+  
     getFollowingUsers(userId) {   
       if (!Utils.isString(userId)) {
         throw new Error('Invalid value for argument "userId". Must be string value')

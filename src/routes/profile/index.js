@@ -14,6 +14,7 @@ import ppPlaceholder from "../../assets/icons/pp_placeholder.svg";
 import bannerPlaceholder from "../../assets/icons/banner_placeholder.svg";
 import ChirpCard from "../../components/chirp-card";
 import toastSuccess from "../../components/toasts/success";
+import toastInfo from "../../components/toasts/info";
 import Loader from "../../components/loader/loader";
 
 // Note: `user` comes from the URL, courtesy of our router
@@ -139,6 +140,8 @@ const Profile = ({ userFilter, filter }) => {
   }
 
   async function follow() {
+    toastInfo("Please login to follow")
+    if(!curUser) {route("/signup"); return;}
     let newUser = { ...user };
     newUser.followers = user.followed ? user.followers - 1 : user.followers + 1;
     newUser.followed = !user.followed;
@@ -212,14 +215,14 @@ const Profile = ({ userFilter, filter }) => {
                 </p>
               </div>
               <div class={style["profile-secondary"]}>
-                {user.objectId === curUser.objectId ? (
+                {user.objectId === curUser?.objectId ? (
                   <div>
                     <button class="sec" onclick={openEdit}>
                       <i class="fa-solid fa-pen"></i> Edit
                     </button>
-                    <p class={"pointer " + style["logout-text"]} onClick={logout}>
+                    <button class="pointer third block mt-05" onClick={logout}>
                       Logout
-                    </p>
+                    </button>
                   </div>
                 ) : user.followed ? (
                   <button class="sec" onclick={follow}>
@@ -248,7 +251,7 @@ const Profile = ({ userFilter, filter }) => {
                 </Link>
               </div>
               <div class={style.chirps}>
-                {curUser.objectId === user.objectId && (
+                {curUser?.objectId === user.objectId && (
                   <div class="mt-2">
                     {" "}
                     <ChirpCard user={curUser} />{" "}
@@ -276,7 +279,7 @@ const Profile = ({ userFilter, filter }) => {
               </div>
             </div>
           </div>
-          {(userFilter === "me" || user.objectId === curUser.objectId) && <EditProfile oldUser={user} editStatus={editStatus} closeEdit={closeEdit} setUser={setUser} />}
+          {(userFilter === "me" || user.objectId === curUser?.objectId) && <EditProfile oldUser={user} editStatus={editStatus} closeEdit={closeEdit} setUser={setUser} />}
         </div>
       )}
     </div>
@@ -318,6 +321,8 @@ const UserFollow = ({ followUser, curUser, closeModal }) => {
   async function follow(e) {
     e.stopPropagation();
     e.preventDefault()
+    toastInfo("Please login to follow")
+    if(!curUser) {route("/signup"); return;}
     let newUser = { ...user };
     newUser.followers = user.followed ? user.followers - 1 : user.followers + 1;
     newUser.followed = !user.followed;
@@ -357,7 +362,7 @@ const UserFollow = ({ followUser, curUser, closeModal }) => {
         </div>
       </div>
       <div>
-        {followUser.objectId !== curUser.objectId && (
+        {followUser.objectId !== curUser?.objectId && (
           <button class={user.followed && "sec"} onClick={follow}>
             {!user.followed && <i class="fa-solid fa-user-plus"></i>} {user.followed ? "Unfollow" : "Follow"}
           </button>

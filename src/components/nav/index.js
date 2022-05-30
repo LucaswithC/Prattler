@@ -32,7 +32,7 @@ const Nav = () => {
       <header class={style["nav-cont"]}>
         <Link href="/" class={style["logo-cont"]}>
           <img class={style["nav-logo"]} src={Chirper} />
-          <p class={"m-0 " + style["dev-badge"]}>ALPHA</p>
+          <p class={"m-0 " + style["dev-badge"]}>BETA 0.1.0</p>
         </Link>
         <nav>
           {user && (

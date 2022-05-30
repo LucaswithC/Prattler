@@ -131,11 +131,6 @@
     font-size: 1.2rem;
 }
 
-.logout-text {
-    color: rgb(var(--red));
-    text-align: end;
-}
-
 @media (min-width: 850px) {
 .chirps {
     margin-top: -20px;

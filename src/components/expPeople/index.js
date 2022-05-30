@@ -1,12 +1,13 @@
 
 import style from "./style.css";
 
-import { Link } from "preact-router";
+import { Link, route } from "preact-router";
 
 import ppPlaceholder from "../../assets/icons/pp_placeholder.svg";
 import bannerPlaceholder from "../../assets/icons/banner_placeholder.svg";
 import { useState } from "preact/hooks";
 import toastError from "../toasts/error";
+import toastInfo from "../toasts/info";
 
 const ExpPeople = ({ user, curUser }) => {
     const [followers, setFollowers] = useState(user.followers)
@@ -15,6 +16,8 @@ const ExpPeople = ({ user, curUser }) => {
     async function follow(e) {
         e.preventDefault()
         e.stopPropagation()
+        toastInfo("Please login to follow")
+        if(!curUser) {route("/signup"); return;}
         setFollowers(followed ? followers - 1 : followers + 1)
         setFollowed(!followed)
         if (!followed) {
@@ -43,7 +46,7 @@ return (
             <p>{user.bio}</p>
         </div>
         <div class={style["people-right"]}>
-            {user.objectId !== curUser.objectId && ( followed ? (
+            {user.objectId !== curUser?.objectId && ( followed ? (
                 <button class="sec" onClick={follow}>Unfollow</button>
             ) : (
                 <button onClick={follow}><i class="fa-solid fa-user-plus"></i> Follow</button>

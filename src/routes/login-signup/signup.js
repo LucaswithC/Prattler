@@ -38,7 +38,7 @@ const SignUp = () => {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    if (user) route("/");
+    if (!!user) route("/profile");
   }, [user]);
 
   useEffect(() => {
@@ -91,13 +91,13 @@ const SignUp = () => {
 
     let formData = e.target.elements;
 
-    var user = new Backendless.User();
-    user.email = formData.email.value;
-    user.password = formData.password.value;
-    user.username = formData.username.value;
-    user.name = formData.username.value;
+    var newUser = new Backendless.User();
+    newUser.email = formData.email.value;
+    newUser.password = formData.password.value;
+    newUser.username = formData.username.value;
+    newUser.name = formData.username.value;
 
-    Backendless.UserService.register(user)
+    Backendless.APIServices.Users.signupUser(newUser)
       .then((user) => {
         Backendless.UserService.login(email, pw, true)
           .then((user) => {
@@ -132,9 +132,9 @@ const SignUp = () => {
       <div class={style["login-right"]}>
         <div class={style["login-header"]}>
           <img src={Chirper} class={style.logo} />
-          <Link href="/" class="button sec">
+          <button onclick={() => history.back()} class="button sec">
             Back
-          </Link>
+          </button>
         </div>
         <div class={style["login-form-cont"]}>
           <h2 class="accent">Signup</h2>

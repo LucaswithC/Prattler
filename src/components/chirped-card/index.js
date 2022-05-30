@@ -16,7 +16,7 @@ import RepliedCard from "../replied-card";
 
 import createDate from "../other/date";
 
-import useClickOutside from 'use-click-outside';
+import useClickOutside from "use-click-outside";
 
 const { encode, decode } = require("url-encode-decode");
 
@@ -34,9 +34,12 @@ const ChirpedCard = ({ data, user }) => {
   const [savedAmount, setSavedAmount] = useState(data.totalSaved || 0);
 
   const [extraMenu, setExtraMenu] = useState(false);
-  const extraMenuRef = useRef()
+  const extraMenuRef = useRef();
+  const newCommentRef = useRef();
 
-  useClickOutside(extraMenuRef, () => {if(extraMenu) setExtraMenu(false)});
+  useClickOutside(extraMenuRef, () => {
+    if (extraMenu) setExtraMenu(false);
+  });
 
   const [newComments, setNewComments] = useState([]);
 
@@ -109,14 +112,9 @@ const ChirpedCard = ({ data, user }) => {
     }
   }
 
-  function openChirp(id) {
-    if (getSelection() == "") {
-      route("/chirp/" + id);
-    }
-  }
-
   function removeChirp(e) {
     e.stopPropagation();
+    e.preventDefault();
     if (typeof window !== "undefined") {
       if (window.confirm("Do you really want to delete your Chirp?")) {
         Backendless.APIServices.Posts.removePost(data.post.postObjectId)
@@ -133,6 +131,16 @@ const ChirpedCard = ({ data, user }) => {
 
   function onCommentPostet(comment) {
     setNewComments([...newComments, comment]);
+  }
+
+  function openComments() {
+    if(!user) return;
+    if(newCommentRef.current.clientHeight > 0) {
+      newCommentRef.current.style.height = 0;
+    } else {
+      newCommentRef.current.style.height = newCommentRef.current.scrollHeight + "px";
+    }
+
   }
 
   return (
@@ -154,7 +162,7 @@ const ChirpedCard = ({ data, user }) => {
           </p>
         )}
         {!!data?.replyInformation && <RepliedCard data={data.replyInformation} />}
-        <div class={style["chirped-card"]} onclick={() => openChirp(data.objectId)}>
+        <Link href={"/chirp/" + data.objectId} class={style["chirped-card"]}>
           <div class={style["chirped-card-header"]}>
             <Link href={"/profile/" + data.post.creator.username}>
               <img src={data.post.creator.profilePicture || ppPlaceholder} />
@@ -171,6 +179,7 @@ const ChirpedCard = ({ data, user }) => {
                   class="fa-solid fa-ellipsis-vertical pointer"
                   onclick={(e) => {
                     e.stopPropagation();
+                    e.preventDefault();
                     setExtraMenu(true);
                   }}
                 ></i>
@@ -202,10 +211,10 @@ const ChirpedCard = ({ data, user }) => {
               ))}
             </div>
           )}
-        </div>
+        </Link>
         <div class={style["chirped-card-bottom"]}>
           <div class={style["chirped-card-interaction"]}>
-            <div class={style["interaction-button"] + " " + style["interaction-comment"]} tabindex="0">
+            <div class={style["interaction-button"] + " " + style["interaction-comment"]} tabindex="0" onclick={openComments}>
               <i class="fa-regular fa-comment"></i>
               <div>
                 <p>{data.post.totalComments || "0"}</p>
@@ -234,12 +243,18 @@ const ChirpedCard = ({ data, user }) => {
               </div>
             </div>
           </div>
-          {user && (!(data.post.replyStatus === "followers" && !data.followed) || data.post.creator.ownerId === user.objectId) && (
-            <ChirpCard user={user} commentOn={{ feedId: data.objectId, objectId: data.post.postObjectId, onFinish: onCommentPostet }} />
+          {user && (
+            <div ref={newCommentRef} class={style["newCommentsCont"]}>
+              {(!(data.post.replyStatus === "followers" && !data.followed) || data.post.creator.ownerId === user.objectId) ? (
+              <ChirpCard user={user} commentOn={{ feedId: data.objectId, objectId: data.post.postObjectId, onFinish: onCommentPostet }} />
+              ) : (
+                <p class="small dimmed m-0">Followers only</p>
+              )}
+            </div>
           )}
           <div class={style["comment-cont"]}>
             {newComments.reverse().map((com) => (
-            <Link href={"/chirp/" + com.objectId} class={style["comment"]}>
+              <Link href={"/chirp/" + com.objectId} class={style["comment"]}>
                 <img src={com.post.creator.profilePicture || ppPlaceholder} />
                 <div>
                   <div class={style["comment-header"]}>
@@ -255,46 +270,6 @@ const ChirpedCard = ({ data, user }) => {
               </Link>
             ))}
           </div>
-          {/* <div class={style["comment-cont"]}>
-            <div class={style["comment"]}>
-              <img src="https://source.unsplash.com/random/?profile" />
-              <div>
-                <div class={style["comment-header"]}>
-                  <span class="smaller">
-                    <strong>Hunter Oliver</strong> <span class="dimmed">24. August at 20:43</span>
-                  </span>
-                </div>
-                <p class={"smaller m-0 " + style["comment-text"]}>
-                  Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.{" "}
-                  <a class="link" href="www.ecosia.com" target="_blank">
-                    ecosia.com
-                  </a>
-                </p>
-                <div class={style["comment-likes"] + " smaller"} onclick={like}>
-                  {" "}
-                  <i class="fa-regular fa-heart"></i> 12 Likes
-                </div>
-              </div>
-            </div>
-            <div class={style["comment"]}>
-              <img src="https://source.unsplash.com/random/?profile" />
-              <div>
-                <div class={style["comment-header"]}>
-                  <span class="smaller">
-                    <strong>Abdurahman Forrest</strong> <span class="dimmed">24. August at 20:43</span>
-                  </span>
-                </div>
-                <p class={"smaller m-0 " + style["comment-text"]}>
-                  Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo
-                  inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia vo
-                </p>
-                <div class={style["comment-likes"] + " smaller"} onclick={like}>
-                  {" "}
-                  <i class="fa-regular fa-heart"></i> 8 Likes
-                </div>
-              </div>
-            </div>
-          </div> */}
         </div>
       </div>
     )
