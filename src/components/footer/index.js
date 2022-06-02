@@ -8,7 +8,7 @@ const Footer = () => (
         © Lucas Kiers
       </a>
     </p>
-    <p class={"m-0 smaller dimmed"}>BETA 0.1.0</p>
+    <p class={"m-0 smaller dimmed"}>BETA 0.1.2</p>
   </div>
 );
 
