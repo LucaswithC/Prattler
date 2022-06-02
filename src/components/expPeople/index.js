@@ -16,8 +16,7 @@ const ExpPeople = ({ user, curUser }) => {
     async function follow(e) {
         e.preventDefault()
         e.stopPropagation()
-        toastInfo("Please login to follow")
-        if(!curUser) {route("/signup"); return;}
+        if(!curUser) {toastInfo("Please login to follow"); route("/signup"); return;}
         setFollowers(followed ? followers - 1 : followers + 1)
         setFollowed(!followed)
         if (!followed) {

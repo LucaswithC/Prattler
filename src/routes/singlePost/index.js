@@ -5,7 +5,7 @@ import { useEffect, useState, useRef } from "preact/hooks";
 import Chocolat from "chocolat";
 import { useQuery, useInfiniteQuery } from "react-query";
 import { Link } from "preact-router";
-import ChirpCard from "../../components/chirp-card";
+import PostCard from "../../components/post-card";
 import CommentCard from "../../components/comment-card";
 import RepliedCard from "../../components/replied-card";
 
@@ -19,57 +19,14 @@ import Loader from "../../components/loader/loader";
 
 import createDate from "../../components/other/date";
 
-import useClickOutside from 'use-click-outside';
+import useClickOutside from "use-click-outside";
+import Footer from "../../components/footer";
+import { encode } from "url-encode-decode";
 
-const ChirpedCard = ({ chirpId }) => {
+const PostedCard = ({ postId }) => {
   const [replySetting, setReplySetting] = useState("everyone");
   const { isInView: loadInView, inViewRef: loadRef } = useInView();
-  const [sortComments, setSortComments] = useState("top")
-
-  const {
-    status: userStatus,
-    data: user,
-    error: userError,
-  } = useQuery("currentUser", async () => {
-    return Backendless.UserService.getCurrentUser();
-  });
-  const {
-    status: chirpStatus,
-    data: chirp,
-    error: chirpError,
-  } = useQuery("chirp-" + chirpId, async () => {
-    return Backendless.APIServices.Posts.getSinglePost(chirpId);
-  }, {
-    retry: false
-  });
-  const {
-    status: commentStatus,
-    data: comments,
-    isFetchingNextPage,
-    fetchNextPage,
-    hasNextPage,
-  } = useInfiniteQuery(
-    ["chirp-comments-" + chirpId, chirp, sortComments],
-    async ({ pageParam = 0 }) => {
-      let sortBy;
-      switch (sortComments) {
-        case "newest":
-          sortBy = "post.created DESC"
-          break;
-        case "oldest":
-          sortBy = "post.created"
-          break;
-        default:
-          sortBy = "Count(post.likes) DESC"
-          break;
-      }
-      return Backendless.APIServices.Posts.getPostComments(chirp.post.postObjectId, { pageSize: 20, pageOffset: pageParam, sortBy  });
-    },
-    {
-      getNextPageParam: (lastPage, pages) => (lastPage.length === 20 ? pages.length * 20 : undefined),
-      enabled: !!chirp,
-    }
-  );
+  const [sortComments, setSortComments] = useState("top");
 
   const [newComments, setNewComments] = useState([]);
 
@@ -87,38 +44,122 @@ const ChirpedCard = ({ chirpId }) => {
   const extraMenuRef = useRef();
   const extraMenuCom = useRef();
 
-  useClickOutside(extraMenuRef, () => {if(extraMenu) setExtraMenu(false)});
-  useClickOutside(extraMenuCom, () => {if(sortStatus) setSortStatus(false)});
+  const {
+    status: userStatus,
+    data: user,
+    error: userError,
+  } = useQuery(
+    "currentUser",
+    async () => {
+      return Backendless.UserService.getCurrentUser();
+    },
+    {
+      retry: false,
+    }
+  );
+  const {
+    status: postStatus,
+    data: post,
+    error: postError,
+  } = useQuery(
+    "post-" + postId,
+    async () => {
+      return Backendless.APIServices.Posts.getSinglePost(postId);
+    },
+    {
+      retry: false,
+    }
+  );
+  const {
+    status: tagsStatus,
+    data: tags,
+    error: tagsError,
+  } = useQuery(
+    "tags-" + postId,
+    async () => {
+      let postTags = post.post.text.match(/#\w+/gi);
+      if (postTags) return Backendless.APIServices.Posts.getTags(postTags);
+      return [];
+    },
+    {
+      enabled: !!post && window.innerWidth > 850,
+    }
+  );
+  const {
+    status: commentStatus,
+    data: comments,
+    error: commentsError,
+    isFetchingNextPage,
+    fetchNextPage,
+    hasNextPage,
+  } = useInfiniteQuery(
+    ["post-comments-" + postId, post, sortComments],
+    async ({ pageParam = 0 }) => {
+      let sortBy;
+      switch (sortComments) {
+        case "newest":
+          sortBy = "post.created DESC";
+          break;
+        case "oldest":
+          sortBy = "post.created";
+          break;
+        default:
+          sortBy = "Count(post.likes) DESC";
+          break;
+      }
+      return Backendless.APIServices.Posts.getPostComments(post.post.postObjectId, { pageSize: 20, pageOffset: pageParam, sortBy });
+    },
+    {
+      getNextPageParam: (lastPage, pages) => (lastPage.length === 20 ? pages.length * 20 : undefined),
+      enabled: !!post,
+    }
+  );
+
+  useEffect(async () => {
+    if (userError?.code === 3064 || postError?.code === 3064 || tagsError?.code === 3064 || commentsError?.code === 3064) {
+      Backendless.UserService.logout().then(function () {
+        queryClient.invalidateQueries("currentUser");
+        location.reload();
+      });
+    }
+  }, [userStatus, postStatus, tagsStatus, commentStatus]);
+
+  useClickOutside(extraMenuRef, () => {
+    if (extraMenu) setExtraMenu(false);
+  });
+  useClickOutside(extraMenuCom, () => {
+    if (sortStatus) setSortStatus(false);
+  });
 
   useEffect(() => {
-    if (chirpStatus === "success") {
-      if (chirp !== undefined) {
+    if (postStatus === "success") {
+      if (post !== undefined) {
         if (typeof window !== "undefined") {
           window.scrollTo({ top: 0 });
-          Chocolat(document.querySelectorAll(".chocolat-image-" + chirp.objectId), {
+          Chocolat(document.querySelectorAll(".chocolat-image-" + post.objectId), {
             loop: true,
           });
         }
-        setLiked(chirp.post?.liked);
-        setReposted(chirp.post?.reposted);
-        setSaved(chirp.saved);
-        setCommentAmount(chirp.post?.totalComments || 0);
-        setLikedAmount(chirp.post?.totalLikes || 0);
-        setRepostedAmount(chirp.post?.totalRepost || 0);
-        setSavedAmount(chirp.totalSaved || 0);
+        setLiked(post.post?.liked);
+        setReposted(post.post?.reposted);
+        setSaved(post.saved);
+        setCommentAmount(post.post?.totalComments || 0);
+        setLikedAmount(post.post?.totalLikes || 0);
+        setRepostedAmount(post.post?.totalRepost || 0);
+        setSavedAmount(post.totalSaved || 0);
       }
     }
-  }, [chirpStatus, chirp]);
+  }, [postStatus, post]);
 
   useEffect(() => {
     if (loadInView) fetchNextPage();
   }, [loadInView]);
 
-  async function rechirp(e) {
+  async function repost(e) {
     if (!reposted) {
       setReposted(!reposted);
       setRepostedAmount(likedAmount + 1);
-      await Backendless.APIServices.Posts.repost(chirp.post.postObjectId).catch((err) => {
+      await Backendless.APIServices.Posts.repost(post.post.postObjectId).catch((err) => {
         setReposted(!liked);
         setRepostedAmount(likedAmount - 1);
         toastError(err.message);
@@ -132,14 +173,14 @@ const ChirpedCard = ({ chirpId }) => {
     setLiked(!liked);
     if (!liked) {
       setLikedAmount(likedAmount + 1);
-      await Backendless.APIServices.Posts.likePost(chirp.post.postObjectId).catch((err) => {
+      await Backendless.APIServices.Posts.likePost(post.post.postObjectId).catch((err) => {
         setLiked(!liked);
         setLikedAmount(likedAmount - 1);
         toastError(err.message);
       });
     } else {
       setLikedAmount(likedAmount - 1);
-      await Backendless.APIServices.Posts.unlikePost(chirp.post.postObjectId).catch((err) => {
+      await Backendless.APIServices.Posts.unlikePost(post.post.postObjectId).catch((err) => {
         setLiked(!liked);
         setLikedAmount(likedAmount + 1);
         toastError(err.message);
@@ -151,14 +192,14 @@ const ChirpedCard = ({ chirpId }) => {
     setSaved(!saved);
     if (!saved) {
       setSavedAmount(savedAmount + 1);
-      await Backendless.APIServices.Posts.savePost(chirp.objectId).catch((err) => {
+      await Backendless.APIServices.Posts.savePost(post.objectId).catch((err) => {
         setSaved(!saved);
         setSavedAmount(savedAmount - 1);
         toastError(err.message);
       });
     } else {
       setSavedAmount(savedAmount - 1);
-      await Backendless.APIServices.Posts.unsavePost(chirp.objectId).catch((err) => {
+      await Backendless.APIServices.Posts.unsavePost(post.objectId).catch((err) => {
         setSaved(!saved);
         setSavedAmount(savedAmount + 1);
         toastError(err.message);
@@ -166,14 +207,14 @@ const ChirpedCard = ({ chirpId }) => {
     }
   }
 
-  function removeChirp(e) {
+  function removePost(e) {
     e.stopPropagation();
     if (typeof window !== "undefined") {
-      if (window.confirm("Do you really want to delete your Chirp?")) {
-        Backendless.APIServices.Posts.removePost(chirp.post.postObjectId)
+      if (window.confirm("Do you really want to delete your Post?")) {
+        Backendless.APIServices.Posts.removePost(post.post.postObjectId)
           .then((res) => {
-            toastSuccess("Chirp successful removed");
-            history.back()
+            toastSuccess("Post successful removed");
+            history.back();
           })
           .catch((err) => {
             toastError("Something went wrong");
@@ -188,42 +229,42 @@ const ChirpedCard = ({ chirpId }) => {
   }
 
   return (
-    <div class={style["single-chirp"] + " container"}>
-      {chirpStatus === "success" ? (
-        chirp !== undefined ? (
+    <div class={style["single-post"] + " container mobile-space"}>
+      {postStatus === "success" ? (
+        post !== undefined ? (
           <div class={style["left-column"]}>
-            <div class={style["chirp-back"]} onclick={() => history.back()}>
+            <div class={style["post-back"]} onclick={() => history.back()}>
               <i class="fa-solid fa-arrow-left"></i> Back
             </div>
-            {chirp.type === "Repost" && (
-              <p class={style["chirp-notice"]}>
-                <i class="fa-solid fa-retweet"></i> {chirp.newPublisher.name} rechirped
+            {post.type === "Repost" && (
+              <p class={style["post-notice"]}>
+                <i class="fa-solid fa-retweet"></i> {post.newPublisher.name} reposted
               </p>
             )}
-            {chirp.type === "Like" && (
-              <p class={style["chirp-notice"]}>
-                <i class="fa-regular fa-heart"></i> {chirp.newPublisher.name} liked
+            {post.type === "Like" && (
+              <p class={style["post-notice"]}>
+                <i class="fa-regular fa-heart"></i> {post.newPublisher.name} liked
               </p>
             )}
-            {chirp.type === "Comment" && (
-              <p class={style["chirp-notice"]}>
-                <i class="fa-regular fa-comment"></i> {chirp.post.creator.name} commented on {chirp.replyInformation.creatorName}
+            {post.type === "Comment" && (
+              <p class={style["post-notice"]}>
+                <i class="fa-regular fa-comment"></i> {post.post.creator.name} commented on {post.replyInformation.creatorName}
               </p>
             )}
-            {!!chirp?.replyInformation && <RepliedCard data={chirp.replyInformation} single={true} />}
-            <div class={style["chirped-card"]}>
-              <div class={style["chirped-card-header"]}>
-                <Link href={"/profile/" + chirp.post.creator.username}>
-                  <img src={chirp.post.creator.profilePicture} />
+            {!!post?.replyInformation && <RepliedCard data={post.replyInformation} single={true} />}
+            <div class={style["posted-card"]}>
+              <div class={style["posted-card-header"]}>
+                <Link href={"/profile/" + post.post.creator.username}>
+                  <img src={post.post.creator.profilePicture} />
                 </Link>
-                <Link href={"/profile/" + chirp.post.creator.username} class={style["chirped-card-header-main"]}>
+                <Link href={"/profile/" + post.post.creator.username} class={style["posted-card-header-main"]}>
                   <p>
-                    <strong>{chirp.post.creator.name}</strong>
+                    <strong>{post.post.creator.name}</strong>
                   </p>
-                  <p class="smaller dimmed">{createDate(chirp.post.created)}</p>
+                  <p class="smaller dimmed">{createDate(post.post.created)}</p>
                 </Link>
-                {user?.username === chirp.post.creator.username && (
-                  <div class={style["chirped-extra-menu"]}>
+                {user?.username === post.post.creator.username && (
+                  <div class={style["posted-extra-menu"]}>
                     <i
                       class="fa-solid fa-ellipsis-vertical pointer"
                       onclick={(e) => {
@@ -232,8 +273,8 @@ const ChirpedCard = ({ chirpId }) => {
                       }}
                     ></i>
                     {extraMenu && (
-                      <div ref={extraMenuRef} class={style["chirped-extra-dropdown"]}>
-                        <div class="red" onclick={removeChirp}>
+                      <div ref={extraMenuRef} class={style["posted-extra-dropdown"]}>
+                        <div class="red" onclick={removePost}>
                           Remove
                         </div>
                       </div>
@@ -241,25 +282,25 @@ const ChirpedCard = ({ chirpId }) => {
                   </div>
                 )}
               </div>
-              <div class={style["chirped-card-body"]}>
+              <div class={style["posted-card-body"]}>
                 <p class="text-pre-wrap">
-                  {reactStringReplace(chirp.post.text, /(#\w+)/gi, (match, i) => (
+                  {reactStringReplace(post.post.text, /(#\w+)/gi, (match, i) => (
                     <Link href={"/explore/top/" + match.replaceAll("#", "%23")} class="link" onclick={(e) => e.stopPropagation()}>
                       {match}
                     </Link>
                   ))}
                 </p>
               </div>
-              {chirp.post.images.length > 0 && (
-                <div class={style["chirped-card-pictures"] + " " + (chirp.post.images.length % 2 === 0 ? style["even"] : style["odd"])}>
-                  {chirp.post.images.map((img) => (
-                    <a class={"chocolat-image-" + chirp.objectId} href={img} title="image caption a">
+              {post.post.images.length > 0 && (
+                <div class={style["posted-card-pictures"] + " " + (post.post.images.length % 2 === 0 ? style["even"] : style["odd"])}>
+                  {post.post.images.map((img) => (
+                    <a class={"chocolat-image-" + post.objectId} href={img} title="image caption a">
                       <img src={img} />
                     </a>
                   ))}
                 </div>
               )}
-              <div class={style["chirped-card-interaction"]}>
+              <div class={style["posted-card-interaction"]}>
                 <div class={style["interaction-button"] + " " + style["interaction-comment"]} tabindex="0">
                   <i class="fa-regular fa-comment"></i>
                   <div>
@@ -267,11 +308,11 @@ const ChirpedCard = ({ chirpId }) => {
                     <p>Comment</p>
                   </div>
                 </div>
-                <div class={style["interaction-button"] + " " + style["interaction-retweet"] + " " + (reposted && "rechirped")} onclick={rechirp} tabindex="0">
+                <div class={style["interaction-button"] + " " + style["interaction-retweet"] + " " + (reposted && "reposted")} onclick={repost} tabindex="0">
                   <i class="fa-solid fa-retweet"></i>{" "}
                   <div>
                     <p>{repostedAmount}</p>
-                    <p>Rechirp</p>
+                    <p>Repost</p>
                   </div>
                 </div>
                 <div class={style["interaction-button"] + " " + style["interaction-like"] + " " + (liked && "liked")} onclick={like} tabindex="0">
@@ -289,25 +330,40 @@ const ChirpedCard = ({ chirpId }) => {
                   </div>
                 </div>
               </div>
-              {user && (!(chirp.post.replyStatus === "followers" && !chirp.followed) || chirp.post.creator.ownerId === user.objectId) && (
-                <ChirpCard user={user} commentOn={{ feedId: chirp.objectId, objectId: chirp.post.postObjectId, onFinish: onCommentPostet }} />
+              {user && (!(post.post.replyStatus === "followers" && !post.followed) || post.post.creator.ownerId === user.objectId) && (
+                <PostCard user={user} commentOn={{ feedId: post.objectId, objectId: post.post.postObjectId, onFinish: onCommentPostet }} />
               )}
 
               <div class={style["comment-cont"]} style={{ overflow: "visible" }}>
                 <div class={style["sort-comments"]}>
-                  {chirp.post.replyStatus === "followers" && <p class="small dimmed m-0">Followers only</p>}
+                  {post.post.replyStatus === "followers" && <p class="small dimmed m-0">Followers only</p>}
                   <div class={style["sort-comments-btn"]} onclick={() => setSortStatus(true)}>
                     <i class="fa-solid fa-arrow-down-wide-short"></i> Sort Comments
                   </div>
                   {sortStatus && (
                     <div class={style["sort-comments-selection"]} ref={extraMenuCom}>
-                      <div onclick={() => {setSortComments("top"); setSortStatus(false)}}>
+                      <div
+                        onclick={() => {
+                          setSortComments("top");
+                          setSortStatus(false);
+                        }}
+                      >
                         <i class="fa-solid fa-heart"></i> Popularity
                       </div>
-                      <div onclick={() => {setSortComments("newest"); setSortStatus(false)}}>
+                      <div
+                        onclick={() => {
+                          setSortComments("newest");
+                          setSortStatus(false);
+                        }}
+                      >
                         <i class="fa-solid fa-clock"></i> Newest first
                       </div>
-                      <div onclick={() => {setSortComments("oldest"); setSortStatus(false)}}>
+                      <div
+                        onclick={() => {
+                          setSortComments("oldest");
+                          setSortStatus(false);
+                        }}
+                      >
                         <i class="fa-solid fa-clock-rotate-left"></i> Oldest first
                       </div>
                     </div>
@@ -337,73 +393,37 @@ const ChirpedCard = ({ chirpId }) => {
             </div>
           </div>
         ) : (
-          <div>Chirp not found</div>
+          <div>Post not found</div>
         )
-      ) : chirpStatus === 'error' ? 
-      (<p class="accent text-center">Post not found</p>) 
-      : ( <Loader />
+      ) : postStatus === "error" ? (
+        <p class="accent text-center">Post not found</p>
+      ) : (
+        <Loader />
       )}
+
       <div class={style["right-column"]}>
-        <div class="card">
-          <div class="card-header">
-            <strong class="smaller">Trends for you</strong>
+        {tagsStatus === "success" && tags.length > 0 && (
+          <div class="card">
+            <div class="card-header">
+              <strong class="smaller">Post Hashtags</strong>
+            </div>
+            <div class="card-body">
+              {tags.map((t) => (
+                <Link href={"/explore/top/" + encode(t.hashtag)} class={style["hashtag-cont"]}>
+                  <p class="m-0">
+                    <strong>{t.hashtag}</strong>
+                  </p>
+                  <p class="smaller m-0">{t.postCount} Posts</p>
+                </Link>
+              ))}
+            </div>
           </div>
-          <div class="card-body">
-            <Link href="/explore/top/%23programming" class={style["hashtag-cont"]}>
-              <p class="m-0">
-                <strong>#programming</strong>
-              </p>
-              <p class="smaller m-0">213k Chirps</p>
-            </Link>
-            <Link href="/explore/top/%23+space" class={style["hashtag-cont"]}>
-              <p class="m-0">
-                <strong>#space</strong>
-              </p>
-              <p class="smaller m-0">34k Chirps</p>
-            </Link>
-            <Link href="/explore/top/%23basketball" class={style["hashtag-cont"]}>
-              <p class="m-0">
-                <strong>#basketball</strong>
-              </p>
-              <p class="smaller m-0">1.2k Chirps</p>
-            </Link>
-            <Link href="/explore/top/%23cineville" class={style["hashtag-cont"]}>
-              <p class="m-0">
-                <strong>#cineville</strong>
-              </p>
-              <p class="smaller m-0">712 Chirps</p>
-            </Link>
-            <Link href="/explore/top/%23cinema" class={style["hashtag-cont"]}>
-              <p class="m-0">
-                <strong>#cinema</strong>
-              </p>
-              <p class="smaller m-0">654 Chirps</p>
-            </Link>
-            <Link href="/explore/top/%23grrensocks" class={style["hashtag-cont"]}>
-              <p class="m-0">
-                <strong>#grrensocks</strong>
-              </p>
-              <p class="smaller m-0">325 Chirps</p>
-            </Link>
-            <Link href="/explore/top/%23london" class={style["hashtag-cont"]}>
-              <p class="m-0">
-                <strong>#london</strong>
-              </p>
-              <p class="smaller m-0">278 Chirps</p>
-            </Link>
-            <Link href="/explore/top/%23dragon" class={style["hashtag-cont"]}>
-              <p class="m-0">
-                <strong>#dragon</strong>
-              </p>
-              <p class="smaller m-0">48 Chirps</p>
-            </Link>
-          </div>
-        </div>
-        <div class="card">
+        )}
+        {/* <div class="card">
           <div class="card-header">
             <strong class="smaller">Who to follow</strong>
           </div>
-          {/* {homeUser && (
+         {homeUser && (
             <div class="card-body">
               {homeUser.map((user) => (
                 <Link href={"/profile/" + user.username} class={style["follow-card"]}>
@@ -424,17 +444,12 @@ const ChirpedCard = ({ chirpId }) => {
                 </Link>
               ))}
             </div>
-          )} */}
-        </div>
-        <p class="smaller dimmed">
-          2021 - {new Date().getFullYear()} |{" "}
-          <a href="https://github.com/LucaswithC" target="_blank">
-            © Lucas Kiers
-          </a>
-        </p>
+          )} 
+        </div>*/}
+        <Footer />
       </div>
     </div>
   );
 };
 
-export default ChirpedCard;
+export default PostedCard;

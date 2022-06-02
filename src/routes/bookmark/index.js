@@ -6,9 +6,10 @@ import styleExp from "../explore/style.css";
 
 import { useQuery, useQueryClient, useInfiniteQuery } from "react-query";
 
-import ChirpedCard from "../../components/chirped-card";
+import PostedCard from "../../components/posted-card";
 import Loader from "../../components/loader/loader";
 import useInView from "../../components/other/inView/index";
+import Footer from "../../components/footer";
 
 // Note: `user` comes from the URL, courtesy of our router
 const Bookmark = ({ filter }) => {
@@ -19,11 +20,14 @@ const Bookmark = ({ filter }) => {
     data: user,
     error: userError,
   } = useQuery("currentUser", async () => {
-    return Backendless.UserService.getCurrentUser();
+    return Backendless.UserService.getCurrentUser()
+  }, {
+    retry: false,
   });
   const {
     status: saveStatus,
     data: saveData,
+    error: saveError,
     isFetchingNextPage,
     fetchNextPage,
     hasNextPage,
@@ -41,26 +45,30 @@ const Bookmark = ({ filter }) => {
       getNextPageParam: (lastPage, pages) => (lastPage.length === 20 ? pages.length * 20 : undefined),
     }
   );
-  // const {
-  //   status: saveStatusOld,
-  //   data: saveDataOld,
-  //   error: saveError,
-  // } = useQuery("Bookmarks", async () => {
-  //   return Backendless.APIServices.Posts.getSaved({})
-  //   })
+
+  useEffect(async () => {
+    if(userError?.code === 3064 || saveError?.code === 3064) {
+      Backendless.UserService.logout()
+      .then(function () {
+        queryClient.invalidateQueries("currentUser")
+        location.reload();
+      })
+    }
+  }, [userStatus, saveStatus])
 
   useEffect(() => {
     if (loadInView) fetchNextPage();
   }, [loadInView]);
 
   return (
-    <div class={"container " + styleExp.explore}>
+    <div class={"container mobile-space " + styleExp.explore}>
+      <div class={styleExp["filter-outer"]}>
       <div class={"card " + styleExp["filter-card"]}>
         <Link href="/bookmarks" activeClassName={styleExp.active} class={styleExp["filter-out"]}>
-          <strong>Chirps</strong>
+          <strong>Posts</strong>
         </Link>
         <Link href="/bookmarks/replies" activeClassName={styleExp.active} class={styleExp["filter-out"]}>
-          <strong>Chirps & Replies</strong>
+          <strong>Posts & Replies</strong>
         </Link>
         <Link href="/bookmarks/media" activeClassName={styleExp.active} class={styleExp["filter-out"]}>
           <strong>Media</strong>
@@ -68,12 +76,14 @@ const Bookmark = ({ filter }) => {
         <Link href="/bookmarks/likes" activeClassName={styleExp.active} class={styleExp["filter-out"]}>
           <strong>Likes</strong>
         </Link>
+        </div>
+        <Footer />
       </div>
       <div class={style["bookmark-tweets"]}>
         {saveStatus == "success" && ( saveData.pages[0].length == 0 ? (
           <p class="loader-outer accent">No posts found</p>
         ) : (
-          saveData.pages.map((page) => page.map((post) => <ChirpedCard data={post} user={user} />))
+          saveData.pages.map((page) => page.map((post) => <PostedCard data={post} user={user} />))
         ))}
         <div ref={loadRef}>
           {isFetchingNextPage || saveStatus === "loading" ? (

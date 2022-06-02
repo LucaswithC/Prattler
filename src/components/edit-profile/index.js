@@ -218,7 +218,7 @@ const EditProfile = ({ oldUser, editStatus, closeEdit, setUser }) => {
     <div>
       <div class={style["edit-cont"] + " " + (editStatus && style["active"])}>
         <i class={"fa-solid fa-circle-chevron-right " + style["close-edit"] + " " + (editStatus && style["active"])} onClick={closeEdit}></i>
-        <div class={style["edit-profile"] + " " + (editStatus && style["active"])}>
+        <div class={style["edit-profile"] + " " + (editStatus && style["active"]) + " mobile-space"}>
           <h2 class="accent">Edit your Profile</h2>
           <p>You can edit your Profile to your Preferences to create your Personal Appearance</p>
           {generalError === "Success" ? (

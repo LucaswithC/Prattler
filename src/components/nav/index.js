@@ -6,7 +6,7 @@ import { useEffect, useState } from "preact/hooks";
 import style from "./style.css";
 import { useQuery, useQueryClient } from "react-query";
 
-import Chirper from "../../assets/icons/Chirper.svg";
+import AppLogo from "../../assets/icons/AppLogo.svg";
 import ppPlaceholder from "../../assets/icons/pp_placeholder.svg";
 
 const { encode, decode } = require('url-encode-decode')
@@ -31,8 +31,7 @@ const Nav = () => {
     <div>
       <header class={style["nav-cont"]}>
         <Link href="/" class={style["logo-cont"]}>
-          <img class={style["nav-logo"]} src={Chirper} />
-          <p class={"m-0 " + style["dev-badge"]}>BETA 0.1.0</p>
+          <img class={style["nav-logo"]} src={AppLogo} />
         </Link>
         <nav>
           {user && (

@@ -1,6 +1,6 @@
 {
-  "name": "Chirper",
-  "short_name": "Chirper",
+  "name": "Prattler",
+  "short_name": "prattler",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
@@ -8,12 +8,13 @@
   "theme_color": "#673ab8",
   "icons": [
     {
-      "src": "/assets/icons/android-chrome-192x192.png",
+      "src": "/assets/android-chrome-192x192.png",
       "type": "image/png",
-      "sizes": "192x192"
+      "sizes": "192x192",
+      "purpose": "any maskable"
     },
     {
-      "src": "/assets/icons/android-chrome-512x512.png",
+      "src": "/assets/android-chrome-512x512.png",
       "type": "image/png",
       "sizes": "512x512"
     }

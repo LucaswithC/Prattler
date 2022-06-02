@@ -5,7 +5,7 @@ import { useEffect, useState } from "preact/hooks";
 import { useQuery, useQueryClient } from "react-query";
 
 import SignupImg from "../../assets/images/signup-img.jpg";
-import Chirper from "../../assets/icons/Chirper.svg";
+import AppLogo from "../../assets/icons/AppLogo.svg";
 import GoogleMark from "../../assets/brands/Google-Mark.png";
 import GitHubMark from "../../assets/brands/GitHub-Mark.png";
 
@@ -18,7 +18,9 @@ const SignUp = () => {
     data: user,
     error: userError,
   } = useQuery("currentUser", async () => {
-    return Backendless.UserService.getCurrentUser();
+    return Backendless.UserService.getCurrentUser()
+  }, {
+    retry: false,
   });
 
   const [pw, setPw] = useState("");
@@ -40,6 +42,16 @@ const SignUp = () => {
   useEffect(() => {
     if (!!user) route("/profile");
   }, [user]);
+
+  useEffect(async () => {
+    if(userError?.code === 3064) {
+      Backendless.UserService.logout()
+      .then(function () {
+        queryClient.invalidateQueries("currentUser")
+        location.reload();
+      })
+    }
+  }, [userStatus])
 
   useEffect(() => {
     if (pw.length > 0 && pw.match(/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,20}$/g)) {
@@ -131,14 +143,14 @@ const SignUp = () => {
       </div>
       <div class={style["login-right"]}>
         <div class={style["login-header"]}>
-          <img src={Chirper} class={style.logo} />
+          <img src={AppLogo} class={style.logo} />
           <button onclick={() => history.back()} class="button sec">
             Back
           </button>
         </div>
         <div class={style["login-form-cont"]}>
           <h2 class="accent">Signup</h2>
-          <p class="m-0">Lets start chirping with your own personal account and spread your thoughts into the world!</p>
+          <p class="m-0">Lets start posting with your own personal account and spread your thoughts into the world!</p>
           {generalError.length > 0 && (
             <p class={"small " + style.error}>
               <i class="fa-regular fa-circle-xmark"></i> Something went wrong, please try again

@@ -7,7 +7,7 @@ import ProfilePlaceholder from "../../assets/icons/pp_placeholder.svg"
 
 const RepliedCard = ({ data, single }) => {
   return (
-    <Link href={data.type === "removed" ? "#" : "/chirp/" + data.objectId} class={style["reply-cont"] + " " + (single && style["single"]) + " " + (data.type === "removed" && style["removed"])}>
+    <Link href={data.type === "removed" ? "#" : "/post/" + data.objectId} class={style["reply-cont"] + " " + (single && style["single"]) + " " + (data.type === "removed" && style["removed"])}>
       <div class={style["reply-left"]}>
         <img src={data.profilePicture || ProfilePlaceholder} />
       </div>

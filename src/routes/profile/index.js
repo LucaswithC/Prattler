@@ -7,28 +7,40 @@ import { Link } from "preact-router/match";
 import { useQuery, useQueryClient, useInfiniteQuery } from "react-query";
 import useInView from "../../components/other/inView";
 
-import ChirpedCard from "../../components/chirped-card";
+import PostedCard from "../../components/posted-card";
 import EditProfile from "../../components/edit-profile";
 
 import ppPlaceholder from "../../assets/icons/pp_placeholder.svg";
 import bannerPlaceholder from "../../assets/icons/banner_placeholder.svg";
-import ChirpCard from "../../components/chirp-card";
+import PostCard from "../../components/post-card";
 import toastSuccess from "../../components/toasts/success";
 import toastInfo from "../../components/toasts/info";
 import Loader from "../../components/loader/loader";
+import Footer from "../../components/footer";
 
 // Note: `user` comes from the URL, courtesy of our router
 const Profile = ({ userFilter, filter }) => {
   const queryClient = useQueryClient();
   const [user, setUser] = useState(null);
+
+  const [modalState, setModalState] = useState(false);
+  const [modalType, setModalType] = useState("follower");
+  const [editStatus, setEditStatus] = useState(false);
+
   const { isInView: loadInView, inViewRef: loadRef } = useInView();
   const {
     status: curUserStatus,
     data: curUser,
     error: curUserError,
-  } = useQuery("currentUser", async () => {
-    return Backendless.UserService.getCurrentUser();
-  });
+  } = useQuery(
+    "currentUser",
+    async () => {
+      return Backendless.UserService.getCurrentUser();
+    },
+    {
+      retry: false,
+    }
+  );
   const {
     status: userStatus,
     data: userData,
@@ -45,13 +57,14 @@ const Profile = ({ userFilter, filter }) => {
     return res;
   });
   const {
-    status: chirpsStatus,
-    data: chirpsData,
+    status: postsStatus,
+    data: postsData,
+    error: postsError,
     isFetchingNextPage,
     fetchNextPage,
     hasNextPage,
   } = useInfiniteQuery(
-    [userFilter + "-Chirps-" + (filter || "all"), user],
+    [userFilter + "-Posts-" + (filter || "all"), user],
     async ({ pageParam = 0 }) => {
       let filterQuery = { pageSize: 20, pageOffset: pageParam };
       filterQuery.whereClause = [`ownerId='${user.objectId}'`];
@@ -67,9 +80,14 @@ const Profile = ({ userFilter, filter }) => {
     }
   );
 
-  const [modalState, setModalState] = useState(false);
-  const [modalType, setModalType] = useState("follower");
-  const [editStatus, setEditStatus] = useState(false);
+  useEffect(async () => {
+    if (curUserError?.code === 3064 || userError?.code === 3064 || postsError?.code === 3064) {
+      Backendless.UserService.logout().then(function () {
+        queryClient.invalidateQueries("currentUser");
+        location.reload();
+      });
+    }
+  }, [curUserStatus, userStatus, postsStatus]);
 
   useEffect(() => {
     if (userStatus === "success") {
@@ -140,8 +158,11 @@ const Profile = ({ userFilter, filter }) => {
   }
 
   async function follow() {
-    toastInfo("Please login to follow")
-    if(!curUser) {route("/signup"); return;}
+    if (!curUser) {
+      toastInfo("Please login to follow");
+      route("/signup");
+      return;
+    }
     let newUser = { ...user };
     newUser.followers = user.followed ? user.followers - 1 : user.followers + 1;
     newUser.followed = !user.followed;
@@ -166,7 +187,7 @@ const Profile = ({ userFilter, filter }) => {
   }
 
   return (
-    <div>
+    <div class="mobile-space">
       {user && (
         <div class={style.profile}>
           <div class={style["follower-modal-cont"] + " " + (modalState && style.active)} onclick={closeModal}>
@@ -187,15 +208,15 @@ const Profile = ({ userFilter, filter }) => {
               <div class={style["profile-main"]}>
                 <div class={style["profile-name-info"]}>
                   <div>
-                    <h3>{user?.name || user.username}</h3>
+                    <h3>{user?.name || user.username}</h3><span class="smaller dimmed"> | </span>
+                    <span class="smaller m-0 pointer" onclick={() => openModal("follower")}>
+                      <strong>{user?.followers || 0}</strong> Followers
+                    </span><span class="smaller dimmed"> | </span>
+                    <span class="smaller m-0 pointer" onclick={() => openModal("following")}>
+                      <strong>{user?.following || 0}</strong> Following
+                    </span>
                     <p class="smaller dimmed m-0">@{user.username}</p>
                   </div>
-                  <p class="smaller m-0 pointer" onclick={() => openModal("follower")}>
-                    <strong>{user?.followers || 0}</strong> Followers
-                  </p>
-                  <p class="smaller m-0 pointer" onclick={() => openModal("following")}>
-                    <strong>{user?.following || 0}</strong> Following
-                  </p>
                 </div>
                 <p class={style["profile-bio"]}>
                   {userFilter === "me" ? (
@@ -216,7 +237,7 @@ const Profile = ({ userFilter, filter }) => {
               </div>
               <div class={style["profile-secondary"]}>
                 {user.objectId === curUser?.objectId ? (
-                  <div>
+                  <div class={style["user-btns"]}>
                     <button class="sec" onclick={openEdit}>
                       <i class="fa-solid fa-pen"></i> Edit
                     </button>
@@ -225,48 +246,51 @@ const Profile = ({ userFilter, filter }) => {
                     </button>
                   </div>
                 ) : user.followed ? (
-                  <button class="sec" onclick={follow}>
+                  <button class={"sec " + style["follow-btn"]} onclick={follow}>
                     Unfollow
                   </button>
                 ) : (
-                  <button onclick={follow}>
+                  <button class={style["follow-btn"]} onclick={follow}>
                     <i class="fa-solid fa-user-plus"></i> Follow
                   </button>
                 )}
               </div>
             </div>
             <div class={stylesExp.explore}>
-              <div class={"card " + stylesExp["filter-card"]}>
-                <Link href={"/profile/" + userFilter} activeClassName={stylesExp.active} class={stylesExp["filter-out"]}>
-                  <strong>Chirps</strong>
-                </Link>
-                <Link href={"/profile/" + userFilter + "/replies"} activeClassName={stylesExp.active} class={stylesExp["filter-out"]}>
-                  <strong>Chirps & Replies</strong>
-                </Link>
-                <Link href={"/profile/" + userFilter + "/media"} activeClassName={stylesExp.active} class={stylesExp["filter-out"]}>
-                  <strong>Media</strong>
-                </Link>
-                <Link href={"/profile/" + userFilter + "/likes"} activeClassName={stylesExp.active} class={stylesExp["filter-out"]}>
-                  <strong>Likes</strong>
-                </Link>
+              <div class={stylesExp["filter-outer"]}>
+                <div class={"card " + stylesExp["filter-card"]}>
+                  <Link href={"/profile/" + userFilter} activeClassName={stylesExp.active} class={stylesExp["filter-out"]}>
+                    <strong>Posts</strong>
+                  </Link>
+                  <Link href={"/profile/" + userFilter + "/replies"} activeClassName={stylesExp.active} class={stylesExp["filter-out"]}>
+                    <strong>Posts & Replies</strong>
+                  </Link>
+                  <Link href={"/profile/" + userFilter + "/media"} activeClassName={stylesExp.active} class={stylesExp["filter-out"]}>
+                    <strong>Media</strong>
+                  </Link>
+                  <Link href={"/profile/" + userFilter + "/likes"} activeClassName={stylesExp.active} class={stylesExp["filter-out"]}>
+                    <strong>Likes</strong>
+                  </Link>
+                </div>
+                <Footer />
               </div>
-              <div class={style.chirps}>
+              <div class={style.posts}>
                 {curUser?.objectId === user.objectId && (
                   <div class="mt-2">
                     {" "}
-                    <ChirpCard user={curUser} />{" "}
+                    <PostCard user={curUser} />{" "}
                   </div>
                 )}
-                {chirpsStatus === "success" &&
-                  (chirpsData.pages[0].length === 0 ? (
+                {postsStatus === "success" &&
+                  (postsData.pages[0].length === 0 ? (
                     <p class="accent" style={{ textAlign: "center", fontWeight: "500" }}>
                       No Posts found
                     </p>
                   ) : (
-                    chirpsData.pages.map((page) => page.map((chirp) => <ChirpedCard data={chirp} user={curUser} />))
+                    postsData.pages.map((page) => page.map((post) => <PostedCard data={post} user={curUser} />))
                   ))}
                 <div ref={loadRef}>
-                  {isFetchingNextPage || chirpsStatus === "loading" ? (
+                  {isFetchingNextPage || postsStatus === "loading" ? (
                     <Loader />
                   ) : (
                     hasNextPage && (
@@ -279,7 +303,9 @@ const Profile = ({ userFilter, filter }) => {
               </div>
             </div>
           </div>
-          {(userFilter === "me" || user.objectId === curUser?.objectId) && <EditProfile oldUser={user} editStatus={editStatus} closeEdit={closeEdit} setUser={setUser} />}
+          {(userFilter === "me" || user.objectId === curUser?.objectId) && (
+            <EditProfile oldUser={user} editStatus={editStatus} closeEdit={closeEdit} setUser={setUser} />
+          )}
         </div>
       )}
     </div>
@@ -320,9 +346,12 @@ const UserFollow = ({ followUser, curUser, closeModal }) => {
 
   async function follow(e) {
     e.stopPropagation();
-    e.preventDefault()
-    toastInfo("Please login to follow")
-    if(!curUser) {route("/signup"); return;}
+    e.preventDefault();
+    toastInfo("Please login to follow");
+    if (!curUser) {
+      route("/signup");
+      return;
+    }
     let newUser = { ...user };
     newUser.followers = user.followed ? user.followers - 1 : user.followers + 1;
     newUser.followed = !user.followed;
@@ -354,7 +383,8 @@ const UserFollow = ({ followUser, curUser, closeModal }) => {
             <img src={user.profilePicture} />
             <div>
               <p class="m-0">
-                <strong>{user.name}</strong><span class="m-0 smaller dimmed"> | {user.followers} Followers</span>
+                <strong>{user.name}</strong>
+                <span class="m-0 smaller dimmed"> | {user.followers} Followers</span>
               </p>
               <p class="dimmed m-0 small">{user.bio}</p>
             </div>

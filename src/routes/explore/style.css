@@ -5,10 +5,14 @@
     gap: 20px;
 }
 
-.filter-card {
-    align-self: flex-start;
+.filter-outer {
     position: sticky;
     top: 20px;
+    height: fit-content;
+}
+
+.filter-card {
+    align-self: flex-start;
 }
 
 .filter-out {
@@ -90,6 +94,9 @@
 @media (max-width: 850px) {
     .explore {
         display: block;
+    }
+    .filter-outer {
+        position: static;
     }
     .filter-card {
         display: flex;

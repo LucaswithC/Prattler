@@ -7,7 +7,7 @@ import { useQuery, useQueryClient, useInfiniteQuery } from "react-query";
 
 import useInView from "../../components/other/inView/index";
 
-import ChirpedCard from "../../components/chirped-card";
+import PostedCard from "../../components/posted-card";
 import ExpPeople from "../../components/expPeople";
 import LoginImg from "../../assets/images/login_img.svg";
 import Loader from "../../components/loader/loader";
@@ -15,6 +15,7 @@ import Loader from "../../components/loader/loader";
 import { route } from "preact-router";
 
 import { encode, decode } from "url-encode-decode";
+import Footer from "../../components/footer";
 
 // Note: `user` comes from the URL, courtesy of our router
 const Profile = ({ searchTerm, filter }) => {
@@ -25,12 +26,21 @@ const Profile = ({ searchTerm, filter }) => {
     status: userStatus,
     data: user,
     error: userError,
-  } = useQuery("currentUser", async () => {
-    return Backendless.UserService.getCurrentUser();
-  });
+  } = useQuery(
+    "currentUser",
+    async () => {
+      console.log("LOL");
+      return Backendless.UserService.getCurrentUser();
+    },
+    {
+      retry: false,
+    }
+  );
+
   const {
     status: expStatus,
     data: expData,
+    error: expError,
     isFetchingNextPage,
     fetchNextPage,
     hasNextPage,
@@ -55,6 +65,15 @@ const Profile = ({ searchTerm, filter }) => {
     }
   );
 
+  useEffect(async () => {
+    if (userError?.code === 3064 || expError?.code === 3064) {
+      Backendless.UserService.logout().then(function () {
+        queryClient.invalidateQueries("currentUser");
+        location.reload();
+      });
+    }
+  }, [userStatus, expStatus]);
+
   function sendSearch(e) {
     e.preventDefault();
     route("/explore/" + filter + "/" + encode(searchInput));
@@ -65,14 +84,14 @@ const Profile = ({ searchTerm, filter }) => {
   }, [loadInView]);
 
   return (
-    <div>
+    <div class="mobile-space">
       {!user && (
         <div class={style["not-login-cont"]}>
           <div class={style["not-login"]}>
             <img src={LoginImg} class={style["not-login-img"]} />
             <div>
               <h2 class="accent">Signup/Login now</h2>
-              <p>If you signup/login you can follow your favourite Chirpers, get a personalised Home-Feed and Chirp for yourself!</p>
+              <p>If you signup/login you can follow your favourite AppLogos, get a personalised Home-Feed and Post for yourself!</p>
               <Link href="/login" class="button sec mr-1">
                 Login
               </Link>
@@ -84,19 +103,22 @@ const Profile = ({ searchTerm, filter }) => {
         </div>
       )}
       <div class={"container " + style.explore}>
-        <div class={"card " + style["filter-card"]}>
-          <Link href={"/explore/top" + (searchInput && "/" + encode(searchInput))} activeClassName={style.active} class={style["filter-out"]}>
-            <strong>Top</strong>
-          </Link>
-          <Link href={"/explore/latest" + (searchInput && "/" + encode(searchInput))} activeClassName={style.active} class={style["filter-out"]}>
-            <strong>Latest</strong>
-          </Link>
-          <Link href={"/explore/people" + (searchInput && "/" + encode(searchInput))} activeClassName={style.active} class={style["filter-out"]}>
-            <strong>People</strong>
-          </Link>
-          <Link href={"/explore/media" + (searchInput && "/" + encode(searchInput))} activeClassName={style.active} class={style["filter-out"]}>
-            <strong>Media</strong>
-          </Link>
+        <div class={style["filter-outer"]}>
+          <div class={"card " + style["filter-card"]}>
+            <Link href={"/explore/top" + (searchInput && "/" + encode(searchInput))} activeClassName={style.active} class={style["filter-out"]}>
+              <strong>Top</strong>
+            </Link>
+            <Link href={"/explore/latest" + (searchInput && "/" + encode(searchInput))} activeClassName={style.active} class={style["filter-out"]}>
+              <strong>Latest</strong>
+            </Link>
+            <Link href={"/explore/people" + (searchInput && "/" + encode(searchInput))} activeClassName={style.active} class={style["filter-out"]}>
+              <strong>People</strong>
+            </Link>
+            <Link href={"/explore/media" + (searchInput && "/" + encode(searchInput))} activeClassName={style.active} class={style["filter-out"]}>
+              <strong>Media</strong>
+            </Link>
+          </div>
+          <Footer />
         </div>
         <div>
           <form class={style["filter-search"]} onSubmit={sendSearch}>
@@ -113,7 +135,7 @@ const Profile = ({ searchTerm, filter }) => {
             ) : filter === "people" ? (
               expData.pages.map((page) => page.map((person) => <ExpPeople user={person} curUser={user} />))
             ) : (
-              expData.pages.map((page) => page.map((chirp) => <ChirpedCard data={chirp} user={user} />))
+              expData.pages.map((page) => page.map((post) => <PostedCard data={post} user={user} />))
             ))}
           <div ref={loadRef}>
             {isFetchingNextPage || expStatus === "loading" ? (

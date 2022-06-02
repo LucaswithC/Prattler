@@ -164,6 +164,15 @@
       const args = null
         
       return Backendless.APIServices.invoke('Posts', 'trendingHashtags', args)
+    },
+  
+    getTags(tags) {   
+      if (!Utils.isObject(tags)) {
+        throw new Error('Invalid value for argument "tags". Must be object value')
+      }
+      
+      const args = tags
+      return Backendless.APIServices.invoke('Posts', 'getTags', args)
     }
   }
   

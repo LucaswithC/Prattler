@@ -6,10 +6,10 @@ import Chocolat from "chocolat";
 import { useQueryClient } from "react-query";
 
 import ppPlaceholder from "../../assets/icons/pp_placeholder.svg";
-import ChirpCard from "../chirp-card";
+import PostCard from "../post-card";
 
-import toastSuccess from "../../components/toasts/success.js";
-import toastError from "../../components/toasts/error.js";
+import toastSuccess from "../toasts/success.js";
+import toastError from "../toasts/error.js";
 
 import reactStringReplace from "react-string-replace";
 import RepliedCard from "../replied-card";
@@ -20,7 +20,7 @@ import useClickOutside from "use-click-outside";
 
 const { encode, decode } = require("url-encode-decode");
 
-const ChirpedCard = ({ data, user }) => {
+const PostedCard = ({ data, user }) => {
   const queryClient = useQueryClient();
   const [replyStatus, setReplyStatus] = useState(false);
   const [replySetting, setReplySetting] = useState("everyone");
@@ -55,7 +55,7 @@ const ChirpedCard = ({ data, user }) => {
     e.stopPropagation();
   }
 
-  async function rechirp(e) {
+  async function repost(e) {
     setReposted(!reposted);
     if (!reposted) {
       setRepostedAmount(repostedAmount + 1);
@@ -112,14 +112,14 @@ const ChirpedCard = ({ data, user }) => {
     }
   }
 
-  function removeChirp(e) {
+  function removePost(e) {
     e.stopPropagation();
     e.preventDefault();
     if (typeof window !== "undefined") {
-      if (window.confirm("Do you really want to delete your Chirp?")) {
+      if (window.confirm("Do you really want to delete your Post?")) {
         Backendless.APIServices.Posts.removePost(data.post.postObjectId)
           .then((res) => {
-            toastSuccess("Chirp successful removed");
+            toastSuccess("Post successful removed");
             setDeleted(true);
           })
           .catch((err) => {
@@ -136,45 +136,50 @@ const ChirpedCard = ({ data, user }) => {
   function openComments() {
     if(!user) return;
     if(newCommentRef.current.clientHeight > 0) {
-      newCommentRef.current.style.height = 0;
+      newCommentRef.current.style.height = newCommentRef.current.clientHeight + "px";
+      setTimeout(() => {
+        newCommentRef.current.style.height = 0;
+      }, 1)
     } else {
       newCommentRef.current.style.height = newCommentRef.current.scrollHeight + "px";
+      setTimeout(() => {
+        if(newCommentRef.current.scrollHeight === newCommentRef.current.clientHeight) newCommentRef.current.style.height = 'auto';
+      }, 250)
     }
-
   }
 
   return (
     !deleted && (
       <div>
         {data.type === "Repost" && (
-          <p class={style["chirp-notice"]}>
-            <i class="fa-solid fa-retweet"></i> {data.newPublisher.name} rechirped
+          <p class={style["post-notice"]}>
+            <i class="fa-solid fa-retweet"></i> {data.newPublisher.name} reposted
           </p>
         )}
         {data.type === "Like" && (
-          <p class={style["chirp-notice"]}>
+          <p class={style["post-notice"]}>
             <i class="fa-regular fa-heart"></i> {data.newPublisher.name} liked
           </p>
         )}
         {data.type === "Comment" && (
-          <p class={style["chirp-notice"]}>
+          <p class={style["post-notice"]}>
             <i class="fa-regular fa-comment"></i> {data.post.creator.name} commented on {data.replyInformation.creatorName}
           </p>
         )}
         {!!data?.replyInformation && <RepliedCard data={data.replyInformation} />}
-        <Link href={"/chirp/" + data.objectId} class={style["chirped-card"]}>
-          <div class={style["chirped-card-header"]}>
+        <Link href={"/post/" + data.objectId} class={style["posted-card"]}>
+          <div class={style["posted-card-header"]}>
             <Link href={"/profile/" + data.post.creator.username}>
               <img src={data.post.creator.profilePicture || ppPlaceholder} />
             </Link>
-            <Link href={"/profile/" + data.post.creator.username} class={style["chirped-card-header-main"]}>
+            <Link href={"/profile/" + data.post.creator.username} class={style["posted-card-header-main"]}>
               <p>
                 <strong>{data.post.creator.name || data.post.creator.username}</strong>
               </p>
               <p class="smaller dimmed">{createDate(data.post.created)}</p>
             </Link>
             {user?.username === data.post.creator.username && (
-              <div class={style["chirped-extra-menu"] + " " + (extraMenu && style["extra-open"])}>
+              <div class={style["posted-extra-menu"] + " " + (extraMenu && style["extra-open"])}>
                 <i
                   class="fa-solid fa-ellipsis-vertical pointer"
                   onclick={(e) => {
@@ -184,8 +189,8 @@ const ChirpedCard = ({ data, user }) => {
                   }}
                 ></i>
                 {extraMenu && (
-                  <div ref={extraMenuRef} class={style["chirped-extra-dropdown"]}>
-                    <div class="red" onclick={removeChirp}>
+                  <div ref={extraMenuRef} class={style["posted-extra-dropdown"]}>
+                    <div class="red" onclick={removePost}>
                       Remove
                     </div>
                   </div>
@@ -193,7 +198,7 @@ const ChirpedCard = ({ data, user }) => {
               </div>
             )}
           </div>
-          <div class={style["chirped-card-body"]}>
+          <div class={style["posted-card-body"]}>
             <p class="text-pre-wrap">
               {reactStringReplace(data.post.text, /(#\w+)/gi, (match, i) => (
                 <Link href={"/explore/top/" + encode(match)} class="link" onclick={(e) => e.stopPropagation()}>
@@ -203,7 +208,7 @@ const ChirpedCard = ({ data, user }) => {
             </p>
           </div>
           {data?.post.images.length > 0 && (
-            <div class={style["chirped-card-pictures"] + " " + (data?.post.images.length % 2 === 0 ? style["even"] : style["odd"])}>
+            <div class={style["posted-card-pictures"] + " " + (data?.post.images.length % 2 === 0 ? style["even"] : style["odd"])}>
               {data?.post.images.map((img) => (
                 <a class={"chocolat-image" + data.objectId} href={img} title="image caption a" onclick={onImgClick}>
                   <img src={img} />
@@ -212,8 +217,8 @@ const ChirpedCard = ({ data, user }) => {
             </div>
           )}
         </Link>
-        <div class={style["chirped-card-bottom"]}>
-          <div class={style["chirped-card-interaction"]}>
+        <div class={style["posted-card-bottom"]}>
+          <div class={style["posted-card-interaction"]}>
             <div class={style["interaction-button"] + " " + style["interaction-comment"]} tabindex="0" onclick={openComments}>
               <i class="fa-regular fa-comment"></i>
               <div>
@@ -221,11 +226,11 @@ const ChirpedCard = ({ data, user }) => {
                 <p>Comment</p>
               </div>
             </div>
-            <div class={style["interaction-button"] + " " + style["interaction-retweet"] + " " + (reposted && "rechirped")} onclick={rechirp} tabindex="0">
+            <div class={style["interaction-button"] + " " + style["interaction-retweet"] + " " + (reposted && "reposted")} onclick={repost} tabindex="0">
               <i class="fa-solid fa-retweet"></i>{" "}
               <div>
                 <p>{repostedAmount}</p>
-                <p>Rechirp</p>
+                <p>Repost</p>
               </div>
             </div>
             <div class={style["interaction-button"] + " " + style["interaction-like"] + " " + (liked && "liked")} onclick={like} tabindex="0">
@@ -246,7 +251,7 @@ const ChirpedCard = ({ data, user }) => {
           {user && (
             <div ref={newCommentRef} class={style["newCommentsCont"]}>
               {(!(data.post.replyStatus === "followers" && !data.followed) || data.post.creator.ownerId === user.objectId) ? (
-              <ChirpCard user={user} commentOn={{ feedId: data.objectId, objectId: data.post.postObjectId, onFinish: onCommentPostet }} />
+              <PostCard user={user} commentOn={{ feedId: data.objectId, objectId: data.post.postObjectId, onFinish: onCommentPostet }} />
               ) : (
                 <p class="small dimmed m-0">Followers only</p>
               )}
@@ -254,7 +259,7 @@ const ChirpedCard = ({ data, user }) => {
           )}
           <div class={style["comment-cont"]}>
             {newComments.reverse().map((com) => (
-              <Link href={"/chirp/" + com.objectId} class={style["comment"]}>
+              <Link href={"/post/" + com.objectId} class={style["comment"]}>
                 <img src={com.post.creator.profilePicture || ppPlaceholder} />
                 <div>
                   <div class={style["comment-header"]}>
@@ -276,4 +281,4 @@ const ChirpedCard = ({ data, user }) => {
   );
 };
 
-export default ChirpedCard;
+export default PostedCard;

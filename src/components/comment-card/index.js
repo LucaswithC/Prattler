@@ -40,7 +40,7 @@ const CommentCard = ({ data, user }) => {
       }
 
   return (
-    <Link href={"/chirp/" + data.objectId} class={style["comment"]}>
+    <Link href={"/post/" + data.objectId} class={style["comment"]}>
       <div>
         <div class={style["comment-header"]}>
         <Link href={"/profile/" + data.post.creator.username} onClick={(e) => e.stopPropagation()}><img src={data.post.creator.profilePicture} class={style["pp-img"]} /></Link>

@@ -13,11 +13,11 @@ import { route } from "preact-router";
 
 import useClickOutside from "use-click-outside";
 
-const ChirpCard = ({ user, commentOn }) => {
+const PostCard = ({ user, commentOn }) => {
   const queryClient = useQueryClient();
   const [replyStatus, setReplyStatus] = useState(false);
   const [replySetting, setReplySetting] = useState("everyone");
-  const [chirpInput, setChirpInput] = useState("");
+  const [postInput, setPostInput] = useState("");
   const [uploadImg, setUploadImg] = useState([]);
   const [uploadImgStatus, setUploadStatus] = useState("");
   const [loading, setLoading] = useState(false);
@@ -25,14 +25,14 @@ const ChirpCard = ({ user, commentOn }) => {
   const replyRef = useRef()
   useClickOutside(replyRef, () => {if(replyStatus) setReplyStatus(false)});
 
-  function chirpTextbox(e) {
+  function postTextbox(e) {
     if (e.target.scrollHeight > e.target.clientHeight) e.target.style.height = e.target.scrollHeight + "px";
-    setChirpInput(e.target.value);
+    setPostInput(e.target.value);
   }
 
   useEffect(() => {
-    setChirpInput(chirpInput.slice(0, 250));
-  }, [chirpInput]);
+    setPostInput(postInput.slice(0, 250));
+  }, [postInput]);
 
   const previewImage = async (e) => {
     let images = e;
@@ -97,8 +97,8 @@ const ChirpCard = ({ user, commentOn }) => {
   function uploadDropEnter(e) {
     if (!e.dataTransfer.getData("text")) {
       enterTarget = e.target;
-      if (e.currentTarget.classList.contains(style["chirp-card"])) {
-        e.currentTarget.classList.add(style["chirp-active-drop"]);
+      if (e.currentTarget.classList.contains(style["post-card"])) {
+        e.currentTarget.classList.add(style["post-active-drop"]);
       }
       e.preventDefault();
       e.stopPropagation();
@@ -111,7 +111,7 @@ const ChirpCard = ({ user, commentOn }) => {
       if (enterTarget == e.target) {
         enterTarget = null;
         e.preventDefault();
-        e.currentTarget.classList.remove(style["chirp-active-drop"]);
+        e.currentTarget.classList.remove(style["post-active-drop"]);
         e.stopPropagation();
         console.log("left");
       }
@@ -160,23 +160,23 @@ const ChirpCard = ({ user, commentOn }) => {
     return imgUpload;
   };
 
-  const sendChirp = async (e) => {
+  const sendPost = async (e) => {
     e.preventDefault();
     setLoading(true);
     const promises = [];
     uploadImg.forEach((img) => promises.push(uploadPicture(img)));
     Promise.all(promises).then((values) => {
       setUploadStatus("");
-      let newChirp = {
-        text: chirpInput,
+      let newPost = {
+        text: postInput,
         images: [...values],
         reply: replySetting,
       };
       if (commentOn) {
-        Backendless.APIServices.Posts.addPostComment(commentOn.feedId, commentOn.objectId, newChirp)
+        Backendless.APIServices.Posts.addPostComment(commentOn.feedId, commentOn.objectId, newPost)
           .then((res) => {
             setLoading(false);
-            setChirpInput("");
+            setPostInput("");
             setUploadImg([]);
             toastSuccess("Comment successful posted")
             commentOn.onFinish(res)
@@ -186,13 +186,13 @@ const ChirpCard = ({ user, commentOn }) => {
             setLoading(false);
           });
       } else {
-        Backendless.APIServices.Posts.addPost(newChirp)
+        Backendless.APIServices.Posts.addPost(newPost)
           .then((res) => {
             setLoading(false);
-            setChirpInput("");
+            setPostInput("");
             setUploadImg([]);
-            toastSuccess("Chirp successful posted");
-            route("/chirp/" + res.objectId);
+            toastSuccess("Post successful posted");
+            route("/post/" + res.objectId);
           })
           .catch((err) => {
             console.log(err);
@@ -204,7 +204,7 @@ const ChirpCard = ({ user, commentOn }) => {
 
   return (
     <div
-      class={style["chirp-card"] + " " + (!!commentOn && style["comment"])}
+      class={style["post-card"] + " " + (!!commentOn && style["comment"])}
       ondragover={onImgDragOver}
       ondrop={onUploadDrop}
       onDragEnter={uploadDropEnter}
@@ -212,36 +212,36 @@ const ChirpCard = ({ user, commentOn }) => {
     >
       {!!commentOn ? (
         <div>
-          {chirpInput && (
+          {postInput && (
             <div class={style["comment-header"]}>
-              <progress class={style["chirp-value-progress"]} value={chirpInput.length} max="250"></progress>
-              <p class="accent">{chirpInput.length} <span class={style["comment-small"]}>/ 250</span></p>
+              <progress class={style["post-value-progress"]} value={postInput.length} max="250"></progress>
+              <p class="accent">{postInput.length} <span class={style["comment-small"]}>/ 250</span></p>
             </div>
             )}
         </div>
       ) : (
         <div>
-          <div class={style["chirp-card-header"]}>
-            <strong class="smaller">Chirp something</strong>
-            <span class="accent">{chirpInput.length} / 250</span>
+          <div class={style["post-card-header"]}>
+            <strong class="smaller">Post something</strong>
+            <span class="accent">{postInput.length} / 250</span>
           </div>
-          <progress class={style["chirp-value-progress"]} value={chirpInput.length} max="250"></progress>
+          <progress class={style["post-value-progress"]} value={postInput.length} max="250"></progress>
         </div>
       )}
       <div>
-        <form onSubmit={sendChirp} class={style["chirp-card-body"]}>
-          <img class={style["chirp-pp"]} src={user?.profilePicture || ppPlaceholder} />
-          <div class={style["chirp-card-body-main"]}>
+        <form onSubmit={sendPost} class={style["post-card-body"]}>
+          <img class={style["post-pp"]} src={user?.profilePicture || ppPlaceholder} />
+          <div class={style["post-card-body-main"]}>
             <textarea
-              id="chirp-input"
-              value={chirpInput}
-              placeholder={!!commentOn ? "Reply something..." : "Chirp something..."}
-              onInput={chirpTextbox}
+              id="post-input"
+              value={postInput}
+              placeholder={!!commentOn ? "Reply something..." : "Post something..."}
+              onInput={postTextbox}
               maxLength="250"
               rows={!!commentOn ? "1" : "2"}
             ></textarea>
             {uploadImg.length > 0 && (
-              <div class={style["chirped-card-pictures"] + " " + (uploadImg.length % 2 === 0 ? style["even"] : style["odd"])}>
+              <div class={style["posted-card-pictures"] + " " + (uploadImg.length % 2 === 0 ? style["even"] : style["odd"])}>
                 {uploadImg.map((img, index) => (
                   <div
                     draggable="true"
@@ -268,20 +268,20 @@ const ChirpCard = ({ user, commentOn }) => {
                 </p>
               )
             )}
-            {((!!commentOn && chirpInput) || !commentOn) && (
-              <div class={style["chirp-card-footer"]}>
+            {((!!commentOn && postInput) || !commentOn) && (
+              <div class={style["post-card-footer"]}>
                 <input
-                  id="chirp-img-id"
-                  class={style["chirp-img-input"]}
+                  id="post-img-id"
+                  class={style["post-img-input"]}
                   type="file"
                   accept="image/png, image/jpg, image/jpeg, image/gif"
                   multiple="true"
                   onInput={(e) => previewImage(e.target.files)}
                 />
-                <label for="chirp-img-id" class={"pointer " + style["img-label"]}>
+                <label for="post-img-id" class={"pointer " + style["img-label"]}>
                   <i class="fa-solid fa-images"></i>
                 </label>
-                <div class={style["chirp-reply"]}>
+                <div class={style["post-reply"]}>
                   {replySetting === "everyone" ? (
                     <div onClick={() => setReplyStatus(true)} class={style["current-reply"]}>
                       <i class="fa-solid fa-earth-americas"></i> Everyone can reply
@@ -294,7 +294,7 @@ const ChirpCard = ({ user, commentOn }) => {
                   {replyStatus && (
                     <div ref={replyRef} class={style["reply-setting"]}>
                       <strong>Who can reply?</strong>
-                      <span>Choose who can reply to this Chirp</span>
+                      <span>Choose who can reply to this Post</span>
                       <div
                         for="reply-anyone"
                         onClick={() => {
@@ -316,12 +316,12 @@ const ChirpCard = ({ user, commentOn }) => {
                     </div>
                   )}
                 </div>
-                {chirpInput.length > 0 ? (
-                  <button type="submit" class={style["chirp-submit"]}>
-                    {loading && <Loader type={"text"} />} Chirp
+                {postInput.length > 0 ? (
+                  <button type="submit" class={style["post-submit"]}>
+                    {loading && <Loader type={"text"} />} Post
                   </button>
                 ) : (
-                  <div class={"button disabled " + style["chirp-submit"]}>{!!commentOn ? "Comment" : "Chirp"}</div>
+                  <div class={"button disabled " + style["post-submit"]}>{!!commentOn ? "Comment" : "Post"}</div>
                 )}
               </div>
             )}
@@ -332,4 +332,4 @@ const ChirpCard = ({ user, commentOn }) => {
   );
 };
 
-export default ChirpCard;
+export default PostCard;

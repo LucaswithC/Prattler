@@ -18,7 +18,7 @@ import Bookmark from "../routes/bookmark";
 import Explore from "../routes/explore";
 import Login from "../routes/login-signup/login.js";
 import SignUp from "../routes/login-signup/signup.js";
-import Chirp from "../routes/chirp"
+import Post from "../routes/singlePost"
 import { useEffect } from "preact/hooks";
 
 const APP_ID = "AD410151-2D10-4D0D-FFE5-2F082E483500";
@@ -33,6 +33,7 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,
+      retry: false
     },
   },
 });
@@ -41,16 +42,6 @@ const App = () => {
   useEffect(() => {
     function success(result) {
       console.log("Is login valid?: " + result);
-      if(!result) {
-        Backendless.UserService.logout()
-        .then(function () {
-          queryClient.invalidateQueries("currentUser");
-          route("/explore/top")
-        })
-        .catch(function (error) {
-          console.log(error);
-        });
-      }
     }
 
     function error(err) {
@@ -76,7 +67,7 @@ const App = () => {
               <Redirect path="/explore" to="/explore/top" />
               <Explore path="/explore/:filter/:searchTerm?" />
               <Bookmark path="/bookmarks/:filter?" />
-              <Chirp path="/chirp/:chirpId" />
+              <Post path="/post/:postId" />
               <div default>404</div>
             </Router>
           </div>

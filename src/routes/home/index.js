@@ -2,9 +2,9 @@ import { h } from "preact";
 import { Router, Link, route, getCurrentUrl } from "preact-router";
 import style from "./style.css";
 
-import ChirpCard from "../../components/chirp-card";
-import ChirpedCard from "../../components/chirped-card";
-import Chirp from "../chirp";
+import PostCard from "../../components/post-card";
+import PostedCard from "../../components/posted-card";
+import Post from "../singlePost";
 import Empty from "../../assets/images/empty.svg";
 import { useEffect, useState } from "preact/hooks";
 import useInView from "../../components/other/inView/index.tsx";
@@ -13,6 +13,7 @@ import { useQuery, useMutation, useQueryClient, QueryClient, QueryClientProvider
 import ppPlaceholder from "../../assets/icons/pp_placeholder.svg";
 import bannerPlaceholder from "../../assets/icons/banner_placeholder.svg";
 import Loader from "../../components/loader/loader";
+import Footer from "../../components/footer";
 
 const { encode, decode } = require("url-encode-decode");
 
@@ -24,18 +25,14 @@ const Home = () => {
     data: user,
     error: userError,
   } = useQuery("currentUser", async () => {
-    return Backendless.UserService.getCurrentUser();
+    return Backendless.UserService.getCurrentUser()
+  }, {
+    retry: false
   });
-  // const {
-  //   status: chirpsStatusOld,
-  //   data: chirpsOld,
-  //   error: chirpsError,
-  // } = useQuery("homeChirps", async () => {
-  //   return await Backendless.APIServices.Posts.getFollowingPosts({whereClause: [`objectId = 'what'`]})
-  // });
   const {
-    status: chirpsStatus,
-    data: chirps,
+    status: postsStatus,
+    data: posts,
+    error: postsError,
     error,
     isFetching,
     isFetchingNextPage,
@@ -45,7 +42,7 @@ const Home = () => {
     hasNextPage,
     hasPreviousPage,
   } = useInfiniteQuery(
-    "homeChirps",
+    "homePosts",
     async ({ pageParam = 0 }) => {
       return Backendless.APIServices.Posts.getFollowingPosts({ pageSize: 20, pageOffset: pageParam });
     },
@@ -59,6 +56,8 @@ const Home = () => {
     error: trendsError,
   } = useQuery("homeHashtags", async () => {
     return await Backendless.APIServices.Posts.trendingHashtags();
+  },{
+    enabled: window.innerWidth > 850
   });
   const {
     status: homeUserStatus,
@@ -66,7 +65,19 @@ const Home = () => {
     error: homeUserError,
   } = useQuery("homeUserList", async () => {
     return Backendless.APIServices.Users.getSuggestedUsers();
+  }, {
+    enabled: window.innerWidth > 850
   });
+
+  useEffect(async () => {
+    if(userError?.code === 3064 || postsError?.code === 3064 || trendsError?.code === 3064 || homeUserError?.code === 3064) {
+      Backendless.UserService.logout()
+      .then(function () {
+        queryClient.invalidateQueries("currentUser")
+        location.reload();
+      })
+    }
+  }, [userStatus, postsStatus, trendsError, homeUserStatus])
 
   useEffect(() => {
     if (userStatus === "success") {
@@ -82,28 +93,28 @@ const Home = () => {
   }, [loadInView]);
 
   return (
-    <div>
+    <div class="mobile-space">
       {user ? (
         <div class={style.home + " container"}>
           <div class={style["left-column"]}>
-            <ChirpCard user={user} />
-            {chirpsStatus == "success" &&
-              (chirps.pages[0].length === 0 ? (
+            <PostCard user={user} />
+            {postsStatus == "success" &&
+              (posts.pages[0].length === 0 ? (
                 <div class={style["empty-cont"]}>
                   <img src={Empty} />
                   <div>
                     <h2 class="accent">A bit empty here right?</h2>
-                    <p>Discover our Explore page and follow your favourite Chirpers to fill up your personal Home-Feed</p>
+                    <p>Discover our Explore page and follow your favourite AppLogos to fill up your personal Home-Feed</p>
                     <Link href="/explore/top" class="button">
                       Explore
                     </Link>
                   </div>
                 </div>
               ) : (
-                chirps.pages.map((chirpsRender) => chirpsRender.map((chirp) => <ChirpedCard data={chirp} user={user} />))
+                posts.pages.map((postsRender) => postsRender.map((post) => <PostedCard data={post} user={user} />))
               ))}
             <div ref={loadRef}>
-              {isFetchingNextPage || chirpsStatus === "loading" ? (
+              {isFetchingNextPage || postsStatus === "loading" ? (
                 <Loader />
               ) : (
                 hasNextPage && (
@@ -118,7 +129,7 @@ const Home = () => {
             {trendsStatus === "success" && trendsHashtags.length > 0 && (
               <div class="card">
                 <div class="card-header">
-                  <strong class="smaller">Trends (last 72 hours)</strong>
+                  <strong class="smaller">Trends</strong>
                 </div>
                 <div class="card-body">
                   {trendsHashtags.map((trend) => (
@@ -144,18 +155,13 @@ const Home = () => {
                 </div>
               </div>
             )}
-            <p class="smaller dimmed">
-              2021 - {new Date().getFullYear()} |{" "}
-              <a href="https://github.com/LucaswithC" target="_blank">
-                © Lucas Kiers
-              </a>
-            </p>
+            <Footer />
           </div>
         </div>
       ) : (
         <div class={"container " + style["not-logged-in-cont"]}>
           <h1 class="accent">Please login</h1>
-          <p>Please login/signup to get your personal Home-Feed and to chirp yourself!</p>
+          <p>Please login/signup to get your personal Home-Feed and to post yourself!</p>
           <Link href="/login" class="button sec">
             Login
           </Link>
@@ -163,7 +169,7 @@ const Home = () => {
             Signup
           </Link>
           <hr />
-          <p>Or you can discover the Explore-Feed with all Chirps!</p>
+          <p>Or you can discover the Explore-Feed with all Posts!</p>
           <Link href="/explore/top" class="button">
             Explore
           </Link>

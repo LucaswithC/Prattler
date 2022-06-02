@@ -1,11 +1,11 @@
-/* chirped-Card Styles  */
-.single-chirp {
+/* posted-Card Styles  */
+.single-post {
     display: grid;
     grid-template-columns: 2fr 1fr;
     gap: 20px;
 }
 
-.chirp-back {
+.post-back {
     font-size: 1rem;
     height: calc(1rem + 14px);
     display: inline-block;
@@ -18,7 +18,7 @@
     cursor: pointer;
 }
 
-.chirped-card {
+.posted-card {
     background: rgb(var(--grey-8));
     padding: 20px;
     border-radius: 10px;
@@ -26,14 +26,14 @@
     top: 20px;
 }
 
-.chirped-card-header {
+.posted-card-header {
     display: flex;
     align-items: flex-start;
     gap: 20px;
     padding-bottom: 10px;
 }
 
-.chirped-card-header-main {
+.posted-card-header-main {
     align-self: center;
     flex-grow: 1;
     padding-right: 10px;
@@ -43,24 +43,24 @@
     gap: 3px;
 }
 
-.chirped-card-header p {
+.posted-card-header p {
     margin: 0;
     color: rgb(var(--grey-3))
 }
 
-.chirped-card-header strong {
+.posted-card-header strong {
     font-size: 1.05rem;
     color: rgb(var(--grey-0))
 }
 
-.chirped-card-header img {
+.posted-card-header img {
     width: 50px;
     height: 50px;
     border-radius: 50%;
     object-fit: cover;
 }
 
-.chirped-card-pictures {
+.posted-card-pictures {
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
@@ -71,28 +71,28 @@
     margin-bottom: 10px;
 }
 
-.chirped-card-pictures.odd {
+.posted-card-pictures.odd {
     flex-direction: column;
 }
 
-.chirped-card-pictures.even {
+.posted-card-pictures.even {
     flex-direction: row;
 }
 
-.chirped-card-pictures a {
+.posted-card-pictures a {
     flex: 1 1 calc(50% - 5px);
     position: relative;
     min-height: 20px;
 }
 
-.chirped-card-pictures img {
+.posted-card-pictures img {
     position: absolute;
     width: 100%;
     height: 100%;
     object-fit: cover;
 }
 
-.chirped-card-footer {
+.posted-card-footer {
     display: flex;
     align-items: flex-end;
     gap: 15px;
@@ -100,7 +100,7 @@
 }
 
 
-.chirped-card-interaction {
+.posted-card-interaction {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 5px;
@@ -156,7 +156,7 @@
     background: rgb(var(--grey-6))
 }
 
-.chirp-notice {
+.post-notice {
     color: rgb(var(--grey-3));
     font-size: 0.9rem;
     padding: 0;
@@ -245,11 +245,11 @@
 }
 
 @media (max-width: 850px) {
-    .chirped-card {
+    .posted-card {
         margin: 20px -20px 0;
         border-radius: 0;
     }
-    .single-chirp {
+    .single-post {
         display: block;
     }
     .right-column {
@@ -258,18 +258,18 @@
 }
 
 @media (max-width: 600px) {
-    .chirped-card-pictures {
+    .posted-card-pictures {
         height: 300px;
     }
 
-    .chirped-card-interaction {
+    .posted-card-interaction {
         display: flex;
     }
 
 }
 
 @media (max-width: 500px) {
-    .chirped-card-pictures {
+    .posted-card-pictures {
         height: 200px;
         gap: 5px;
     }
@@ -299,19 +299,19 @@
     }
 }
 
-.chirped-extra-menu {
+.posted-extra-menu {
     position: relative;
     align-self: flex-start;
     flex-grow: 1;
     text-align: end;
 }
 
-.chirped-extra-menu i {
+.posted-extra-menu i {
     padding: 0 10px;
     margin-right: -10px;
 }
 
-.chirped-extra-dropdown {
+.posted-extra-dropdown {
     position: absolute;
     top: calc(100% + 10px);
     right: 0;
@@ -325,22 +325,22 @@
     text-align: start;
 }
 
-.chirped-extra-dropdown div {
+.posted-extra-dropdown div {
     display: block;
     padding: 10px;
     border-radius: 5px;
     cursor: pointer;
 }
 
-.chirped-extra-dropdown div:hover {
+.posted-extra-dropdown div:hover {
     background: rgb(var(--grey-7));
 }
 
 @media (prefers-color-scheme: dark) {
-    .chirped-extra-dropdown {
+    .posted-extra-dropdown {
         background: rgb(var(--grey-7));
     }
-    .chirped-extra-dropdown div:hover {
+    .posted-extra-dropdown div:hover {
         background: rgb(var(--grey-8));
     } 
 }

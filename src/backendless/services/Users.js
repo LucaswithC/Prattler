@@ -95,6 +95,15 @@
       
       const args = updatedUser
       return Backendless.APIServices.invoke('Users', 'editUser', args)
+    },
+
+    resetPassword(email) {   
+      if (!Utils.isString(email)) {
+        throw new Error('Invalid value for argument "email". Must be string value')
+      }
+      
+      const args = email
+      return Backendless.APIServices.invoke('Users', 'resetPassword', args)
     }
   }
   

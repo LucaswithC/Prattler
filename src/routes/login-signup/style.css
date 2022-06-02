@@ -52,6 +52,10 @@
     height: 30px;
 }
 
+.login-outer {
+    margin: auto;
+}
+
 .login-form-cont {
     padding: 20px;
     display: flex;
@@ -59,7 +63,6 @@
     justify-content: center;
     align-self: center;
     max-width: 400px;
-    margin: auto;
     background: rgb(var(--grey-8));
     border-radius: 10px;
 }
@@ -68,14 +71,14 @@
     margin-bottom: 20px;
 }
 
-.login-form label {
+:where(.login-form, .forgot-inner) label {
     display: block;
     font-size: 0.8rem;
     margin-bottom: 5px;
     margin-top: 20px;
 }
 
-.login-form button.submit {
+:where(.login-form, .forgot-inner) button.submit {
     margin: 20px auto 0;
     display: block;
     width: 100%;
@@ -127,6 +130,10 @@
     gap: 5px;
     margin: 5px 0;
     align-items: center;
+}
+
+.success {
+    color: rgb(var(--green))
 }
 
 .error {
@@ -197,5 +204,8 @@
     }
     .login-right {
         width: 100%;
+    }
+    .forgot-outer {
+        border-top: 2px solid rgb(var(--grey-4));
     }
 }
