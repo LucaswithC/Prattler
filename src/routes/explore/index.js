@@ -1,7 +1,8 @@
 import { h } from "preact";
-import { useEffect, useState } from "preact/hooks";
-import { Link } from "preact-router/match";
+import { useEffect, useState, useRef } from "preact/hooks";
+import { Link, Match } from "preact-router/match";
 import style from "./style.css";
+import useClickOutside from "use-click-outside";
 
 import { useQuery, useQueryClient, useInfiniteQuery } from "react-query";
 
@@ -20,6 +21,8 @@ import Footer from "../../components/footer";
 // Note: `user` comes from the URL, courtesy of our router
 const Profile = ({ searchTerm, filter }) => {
   const [searchInput, setSearchInput] = useState(decode(searchTerm));
+  const [recentSearchesOpen, setRecentSearchesOpen] = useState(false);
+  const [recentSearches, setRecentSearches] = useState([]);
   const { isInView: loadInView, inViewRef: loadRef } = useInView();
   const queryClient = useQueryClient();
   const {
@@ -65,6 +68,12 @@ const Profile = ({ searchTerm, filter }) => {
     }
   );
 
+  const searchSuggRef = useRef();
+
+  useClickOutside(searchSuggRef, () => {
+    setRecentSearchesOpen(false);
+  });
+
   useEffect(async () => {
     if (userError?.code === 3064 || expError?.code === 3064) {
       Backendless.UserService.logout().then(function () {
@@ -74,14 +83,33 @@ const Profile = ({ searchTerm, filter }) => {
     }
   }, [userStatus, expStatus]);
 
+  useEffect(() => {
+    setSearchInput(decode(searchTerm));
+  }, [searchTerm]);
+
   function sendSearch(e) {
     e.preventDefault();
+    let search = e.target.elements.searchInput.value;
+    let recent = localStorage.getItem("recent-searches") || [];
+    if (!!search.length && !recent.includes(search)) {
+      localStorage.setItem("recent-searches", JSON.stringify([search, ...JSON.parse(recent)].slice(0, 5)));
+    }
+    setRecentSearchesOpen(false);
+    e.target.elements.searchInput.blur()
     route("/explore/" + filter + "/" + encode(searchInput));
   }
 
   useEffect(() => {
     if (loadInView) fetchNextPage();
   }, [loadInView]);
+
+  function openRecentSearches() {
+    let recent = localStorage.getItem("recent-searches");
+    if (recent) {
+      setRecentSearches(JSON.parse(recent));
+      setRecentSearchesOpen(true);
+    }
+  }
 
   return (
     <div class="mobile-space">
@@ -105,26 +133,62 @@ const Profile = ({ searchTerm, filter }) => {
       <div class={"container " + style.explore}>
         <div class={style["filter-outer"]}>
           <div class={"card " + style["filter-card"]}>
-            <Link href={"/explore/top" + (searchInput && "/" + encode(searchInput))} activeClassName={style.active} class={style["filter-out"]}>
-              <strong>Top</strong>
-            </Link>
-            <Link href={"/explore/latest" + (searchInput && "/" + encode(searchInput))} activeClassName={style.active} class={style["filter-out"]}>
-              <strong>Latest</strong>
-            </Link>
-            <Link href={"/explore/people" + (searchInput && "/" + encode(searchInput))} activeClassName={style.active} class={style["filter-out"]}>
-              <strong>People</strong>
-            </Link>
-            <Link href={"/explore/media" + (searchInput && "/" + encode(searchInput))} activeClassName={style.active} class={style["filter-out"]}>
-              <strong>Media</strong>
-            </Link>
+            <Match path="/explore/top/:searchTerm?">
+              {({ matches, path, url }) => (
+                <Link href={"/explore/top" + (searchInput && "/" + encode(searchInput))} class={style["filter-out"] + " " + (matches && style.active)}>
+                  <strong>Top</strong>
+                </Link>
+              )}
+            </Match>
+            <Match path="/explore/latest/:searchTerm?">
+              {({ matches, path, url }) => (
+                <Link href={"/explore/latest" + (searchInput && "/" + encode(searchInput))} class={style["filter-out"] + " " + (matches && style.active)}>
+                  <strong>Latest</strong>
+                </Link>
+              )}
+            </Match>
+            <Match path="/explore/people/:searchTerm?">
+              {({ matches, path, url }) => (
+                <Link href={"/explore/people" + (searchInput && "/" + encode(searchInput))} class={style["filter-out"] + " " + (matches && style.active)}>
+                  <strong>People</strong>
+                </Link>
+              )}
+            </Match>
+            <Match path="/explore/media/:searchTerm?">
+              {({ matches, path, url }) => (
+                <Link href={"/explore/media" + (searchInput && "/" + encode(searchInput))} class={style["filter-out"] + " " + (matches && style.active)}>
+                  <strong>Media</strong>
+                </Link>
+              )}
+            </Match>
           </div>
           <Footer />
         </div>
         <div>
           <form class={style["filter-search"]} onSubmit={sendSearch}>
-            <div class={style["search-cont"]}>
-              <i class="fa-solid fa-magnifying-glass"></i>
-              <input name="searchInput" type="text" placeholder="#GreekSalad" value={searchInput} onInput={(e) => setSearchInput(e.target.value)} />
+            <div class={style["search-cont"]} ref={searchSuggRef}>
+              <i class={"fa-solid fa-magnifying-glass " + style["input-i"]}></i>
+              <input
+                onFocus={openRecentSearches}
+                autocomplete="off"
+                name="searchInput"
+                type="text"
+                placeholder="#GreekSalad"
+                value={searchInput}
+                onInput={(e) => setSearchInput(e.target.value)}
+              />
+              <button type="reset" class={"unset pointer " + style["input-i-reset-btn"]}>
+                  <i class={"fa-solid fa-xmark " + style["input-i-reset"]}></i>
+                </button>
+              {recentSearchesOpen && (
+                <div class={style["recent-searches"]}>
+                  {recentSearches.map((s) => (
+                    <Link href={"/explore/top/" + encode(s)} onClick={() => setRecentSearchesOpen(false)}>
+                      <i class="fa-regular fa-clock"></i> {s}
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
 
             <button type="submit">Search</button>

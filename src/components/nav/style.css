@@ -91,10 +91,9 @@ nav *:not(:last-child) {
 
 .icon-input {
 	position: relative;
-	margin-right: 20px;
 }
 
-.icon-input i {
+.icon-input .icon-glass i {
 	position: absolute;
 	top: 50%;
 	left: 10px;
@@ -102,17 +101,62 @@ nav *:not(:last-child) {
 	color: rgb(var(--grey-3))
 }
 
+.icon-input .icon-reset i {
+	position: absolute;
+	top: 50%;
+	right: 10px;
+	transform: translateY(-50%);
+	color: rgb(var(--grey-3));
+}
+
 .icon-input input {
+	padding-right: 30px;
 	padding-left: 30px;
 	width: 100%;
 	max-width: 500px;
 }
 
+.icon-input input:placeholder-shown ~ .icon-reset {
+	display: none;
+}
+
 .nav-search {
-	background: rgb(var(--grey-7));
-	border-radius: 50px;
+	background: rgb(var(--grey-6));
 	padding: 5px 10px;
 	border: 1px solid rgb(var(--grey-5));
+}
+
+.nav-search::placeholder {
+	color: rgb(var(--grey-1))
+}
+
+.recent-searches {
+	z-index: 20;
+	position: absolute;
+	top: calc(100% + 5px);
+	background: rgb(var(--grey-6));
+	border-radius: 5px;
+	width: 100%;
+	padding: 5px;
+	font-size: 0.9rem;
+}
+
+.recent-searches i {
+	margin-right: 5px;
+}
+
+.recent-searches a {
+	padding: 5px 10px;
+	border-radius: 5px;
+	display: block;
+	cursor: pointer;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.recent-searches a:hover {
+	background-color: rgb(var(--grey-7));;
 }
 
 .active-bookmark {
@@ -162,22 +206,30 @@ nav *:not(:last-child) {
 	display: none;
 }
 
-.nav-search-mobile {
+.item-mobile {
 	display: none;
 }
 
 @media (max-width: 850px) {
+	.nav-user {
+		flex-grow: 1;
+	}
 	.icon-input {
-		display: none;
+		flex-grow: 1;
+		margin-left: 20px;
+		margin-right: 0;
+	}
+	.icon-input input {
+		max-width: unset;
 	}
 	.item-desktop {
 		display: none;
 	}
+	.item-mobile {
+		display: block;
+	}
 	.nav-mobile {
 		display: flex;
-	}
-	.nav-search-mobile {
-		display: inline;
 	}
 	.nav-item.active::after {
 		height: 3px

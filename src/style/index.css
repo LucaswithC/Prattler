@@ -123,6 +123,10 @@ input:focus, textarea:focus {
 	color: rgb(var(--grey-3))
 }
 
+.unset {
+	all: unset;
+}
+
 .block {
 	display: block;
 }

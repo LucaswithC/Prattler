@@ -60,17 +60,58 @@
 
 .search-cont input {
     background: rgb(var(--grey-8));
-    padding: 15px 10px;
-    padding-left: 35px;
+    padding: 15px 35px;
     border: none;
 }
 
-.search-cont i {
+.search-cont input:placeholder-shown ~ .input-i-reset-btn {
+    display: none;
+}
+
+.search-cont .input-i {
     position: absolute;
     top: 50%;
     left: 10px;
     transform: translateY(-50%);
     color: rgb(var(--grey-3))
+}
+
+.search-cont .input-i-reset {
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    transform: translateY(-50%);
+    color: rgb(var(--grey-3))
+}
+
+
+.recent-searches {
+	z-index: 20;
+	position: absolute;
+	top: calc(100% + 5px);
+	background: rgb(var(--grey-6));
+	border-radius: 5px;
+	width: 100%;
+	padding: 5px;
+	font-size: 0.9rem;
+}
+
+.recent-searches i {
+	margin-right: 5px;
+}
+
+.recent-searches a {
+	padding: 5px 10px;
+	border-radius: 5px;
+	display: block;
+	cursor: pointer;
+    white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.recent-searches a:hover {
+	background-color: rgb(var(--grey-7));;
 }
 
 .not-login-cont {
