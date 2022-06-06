@@ -179,7 +179,7 @@ nav *:not(:last-child) {
 	width: 100%;
 	background: rgb(var(--grey-8));
 	z-index: 100;
-	box-shadow: 0px 0px 10px rgba(var(--grey-4), 0.5);
+	border-top: 1px solid rgb(var(--grey-7));
 	display: none;
 	justify-content: space-evenly;
 }
@@ -188,15 +188,14 @@ nav *:not(:last-child) {
 	display: flex;
 	flex-direction: column;
 	gap: 5px;
-	font-size: 0.8rem;
-	padding: 10px 12px;
-	font-size: 0.8rem;
+	padding: 8px 12px;
+	font-size: 0.6rem;
 }
 
 .nav-mobile .nav-item :where(i, img) {
-	font-size: 1rem;
-	height: 1.1rem;
-	width: 1.1rem;
+	font-size: 1.1rem;
+	height: 1.2rem;
+	width: 1.2rem;
 	object-fit: cover;
 	border-radius: 50%;
 }

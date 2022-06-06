@@ -1,4 +1,5 @@
 import style from "./style.css"
+import packageJson from "../../../package.json"
 
 const Footer = () => (
   <div class={style.footer}>
@@ -8,7 +9,7 @@ const Footer = () => (
         © Lucas Kiers
       </a>
     </p>
-    <p class={"m-0 smaller dimmed"}>BETA 0.1.2</p>
+    <p class={"m-0 smaller dimmed"}>BETA {packageJson.version}</p>
   </div>
 );
 
