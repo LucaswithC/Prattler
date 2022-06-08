@@ -170,7 +170,7 @@ const PostedCard = ({ data, user }) => {
         <Link href={"/post/" + data.objectId} class={style["posted-card"]}>
           <div class={style["posted-card-header"]}>
             <Link href={"/profile/" + data.post.creator.username}>
-              <img src={data.post.creator.profilePicture || ppPlaceholder} />
+              <img src={data.post.creator.profilePicture?.small || ppPlaceholder} />
             </Link>
             <Link href={"/profile/" + data.post.creator.username} class={style["posted-card-header-main"]}>
               <p>
@@ -210,8 +210,8 @@ const PostedCard = ({ data, user }) => {
           {data?.post.images.length > 0 && (
             <div class={style["posted-card-pictures"] + " " + (data?.post.images.length % 2 === 0 ? style["even"] : style["odd"])}>
               {data?.post.images.map((img) => (
-                <a class={"chocolat-image" + data.objectId} href={img} title="image caption a" onclick={onImgClick}>
-                  <img src={img} />
+                <a class={"chocolat-image" + data.objectId} href={img.original} title="image caption a" onclick={onImgClick}>
+                  <img src={img.small} />
                 </a>
               ))}
             </div>
@@ -260,7 +260,7 @@ const PostedCard = ({ data, user }) => {
           <div class={style["comment-cont"]}>
             {newComments.reverse().map((com) => (
               <Link href={"/post/" + com.objectId} class={style["comment"]}>
-                <img src={com.post.creator.profilePicture || ppPlaceholder} />
+                <img src={com.post.creator.profilePicture?.small || ppPlaceholder} />
                 <div>
                   <div class={style["comment-header"]}>
                     <span class="smaller">

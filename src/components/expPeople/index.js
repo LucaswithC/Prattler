@@ -36,8 +36,8 @@ const ExpPeople = ({ user, curUser }) => {
 
 return (
     <Link href={"/profile/" + user.username} class={style["people-card"] + " card"}>
-        <img class={style["people-banner"]} src={user.banner || bannerPlaceholder} />
-        <img class={style["people-pp"]} src={user.profilePicture || ppPlaceholder} />
+        <img class={style["people-banner"]} src={user.banner?.medium || bannerPlaceholder} />
+        <img class={style["people-pp"]} src={user.profilePicture?.small || ppPlaceholder} />
         <div class={style["people-body"]}>
             <div class={style["people-left"]}>
             <p class="mb-0"><strong>{user?.name || user.username}</strong> <span class="smaller dimmed">| <strong>{followers}</strong> Follower | <strong>{user.following}</strong> Following</span></p>

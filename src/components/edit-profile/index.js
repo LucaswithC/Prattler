@@ -3,21 +3,31 @@ import style from "./style.css";
 import { useEffect, useState } from "preact/hooks";
 import { useQuery, useQueryClient } from "react-query";
 
-import toastError from '../toasts/error'
+import toastError from "../toasts/error";
 
 import ppPlaceholder from "../../assets/icons/pp_placeholder.svg";
 import bannerPlaceholder from "../../assets/icons/banner_placeholder.svg";
+
+import convert from "image-file-resize";
+import {renameFile, getHeightAndWidthFromDataUrl, calculateAspectRatioFit} from "../other/files"
 
 let emailCheckTimeout;
 
 const EditProfile = ({ oldUser, editStatus, closeEdit, setUser }) => {
   const queryClient = useQueryClient();
-  const {status: userStatus, data: user, error: userError, refetch: userRefetch} = useQuery('currentUser', async () => {
-    return Backendless.UserService.getCurrentUser()
-  })
+  const {
+    status: userStatus,
+    data: user,
+    error: userError,
+    refetch: userRefetch,
+  } = useQuery("currentUser", async () => {
+    return Backendless.UserService.getCurrentUser();
+  });
 
   const [newPPicture, setNewPPicture] = useState("");
+  const [newPPPreview, setNewPPPreview] = useState("");
   const [newBannerPicture, setNewBannerPicture] = useState("");
+  const [newBannerPreview, setNewBannerPreview] = useState("");
   const [ppUplaod, setPpUpload] = useState("");
   const [bannerUplaod, setBannerUpload] = useState("");
 
@@ -93,12 +103,13 @@ const EditProfile = ({ oldUser, editStatus, closeEdit, setUser }) => {
     if (newPassword.length > 0 && !newPassword.match(/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,20}$/g)) setSubmit(false);
   }, [newName, newBio, errors, emailStatus, email, oldPassword, newPassword]);
 
-  function previewPP(e) {
+  function submitPP(e) {
     setPpUpload("");
     let file = e.target.files[0];
     const fileReader = new FileReader();
     fileReader.onload = () => {
-      setNewPPicture(fileReader.result);
+      setNewPPicture(file);
+      setNewPPPreview(fileReader.result);
     };
     if (file.type !== "image/png" && file.type !== "image/jpg" && file.type !== "image/jpeg" && file.type !== "image/gif") {
       setNewError("ppError", "Wrong Format. Only use png, jpg or gif");
@@ -106,16 +117,18 @@ const EditProfile = ({ oldUser, editStatus, closeEdit, setUser }) => {
       setNewError("ppError", "Size is too big. Max. Size is 2 MB");
     } else {
       deleteError("ppError");
+      setNewPPicture(file);
       fileReader.readAsDataURL(file);
     }
   }
 
-  function previewBanner(e) {
+  function submitBanner(e) {
     setBannerUpload("");
     let file = e.target.files[0];
     const fileReader = new FileReader();
     fileReader.onload = () => {
-      setNewBannerPicture(fileReader.result);
+      setNewBannerPreview(fileReader.result);
+      setNewBannerPicture(file);
     };
     if (file.type !== "image/png" && file.type !== "image/jpg" && file.type !== "image/jpeg" && file.type !== "image/gif") {
       setNewError("bannerError", "Wrong Format. Only use png, jpg or gif");
@@ -127,29 +140,63 @@ const EditProfile = ({ oldUser, editStatus, closeEdit, setUser }) => {
     }
   }
 
-  const uploadPicture = async (file, upload) => {
+  const uploadPicture = async (file, upload, folder, override) => {
     upload("Uploading");
-    let cloudname = "dtc8u5oa0";
-    const fileForm = new FormData();
-    fileForm.append("file", file);
-    fileForm.append("upload_preset", "pk0uto3z");
-    fileForm.append("cloud_name", cloudname);
-    let imgUpload = await fetch(`https://api.cloudinary.com/v1_1/${cloudname}/image/upload`, {
-      method: "POST",
-      body: fileForm,
+    const fileAsDataURL = window !== undefined && window.URL.createObjectURL(file);
+    const dimension = await getHeightAndWidthFromDataUrl(fileAsDataURL);
+
+    let sizes = {
+      medium: calculateAspectRatioFit(dimension.width, dimension.height, folder === "banner" ? 1000 : 250),
+      small: calculateAspectRatioFit(dimension.width, dimension.height, folder === "banner" ? 600 : 60),
+    };
+
+    const randomName = Date.now() + "" + Math.floor(Math.random() * 100000)
+
+    let images = {
+      original: renameFile(file, user.objectId + "-" + randomName + "-" + folder + "." + file.type.split("/")[1]),
+    };
+    await convert({
+      file: renameFile(file, user.objectId + "-" + randomName + "-" + folder + "-medium." + file.type.split("/")[1]),
+      width: sizes.medium.width,
+      height: sizes.medium.height,
+      type: file.type.split("/")[1],
     })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.error) {
-          upload("Error");
-          throw new Error("Error");
-          return "Error";
-        } else {
-          upload("");
-          return data.url;
-        }
+      .then((resp) => {
+        images.medium = resp;
+      })
+      .catch((error) => {
+        console.log(file.type.split("/")[1], error);
+        throw error;
       });
-    return imgUpload;
+    await convert({
+      file: renameFile(file, user.objectId + "-" + randomName + "-" + folder + "-small." + file.type.split("/")[1]),
+      width: sizes.small.width,
+      height: sizes.small.height,
+      type: file.type.split("/")[1],
+    })
+      .then((resp) => {
+        images.small = resp;
+      })
+      .catch((error) => {
+        throw error;
+      });
+    return await Promise.all([
+      Backendless.Files.upload(images.original, folder, override),
+      images.medium.size < images.original.size ? Backendless.Files.upload(images.medium, folder, override) : null,
+      (images.small.size < images.medium.size && images.small.size < images.original.size) ? Backendless.Files.upload(images.small, folder, override) : null,
+    ])
+      .then((values) => {
+        upload("");
+        return {
+          original: values[0].fileURL,
+          medium: values[1]?.fileURL || values[0]?.fileURL,
+          small: values[2]?.fileURL || values[1]?.fileURL || values[0]?.fileURL,
+        };
+      })
+      .catch((err) => {
+        upload("Error");
+        throw err;
+      });
   };
 
   const updateUser = async (e) => {
@@ -158,19 +205,24 @@ const EditProfile = ({ oldUser, editStatus, closeEdit, setUser }) => {
     setLoading(true);
     if (canSubmit) {
       if (Object.keys(errors).length === 0) {
-        let pp = newPPicture ? uploadPicture(newPPicture, setPpUpload) : null;
-        let banner = newBannerPicture ? uploadPicture(newBannerPicture, setBannerUpload) : null;
+        let pp = newPPicture ? uploadPicture(newPPicture, setPpUpload, "profilePictures", false) : null;
+        let banner = newBannerPicture ? uploadPicture(newBannerPicture, setBannerUpload, "banner", false) : null;
         Promise.all([pp, banner])
           .then((values) => {
-            console.log("Upload");
             let updateData = {};
             let ppRes = values[0];
             let bannerRes = values[1];
             updateData.username = user.username;
             if (newName !== user.name) updateData.name = newName;
             if (newBio !== user.bio) updateData.bio = newBio;
-            if (newPPicture) updateData.profilePicture = ppRes || user?.profilePicture;
-            if (newBannerPicture) updateData.banner = bannerRes || user?.banner;
+            if (ppRes) {
+              updateData.profilePicture = ppRes || user?.profilePicture;
+              updateData.oldPP = user.profilePicture
+            } 
+            if (bannerRes) { 
+              updateData.banner = bannerRes || user?.banner; 
+              updateData.oldBanner = user.banner
+            }
             if (email !== curEmail) updateData.email = email;
             if (newPassword) updateData.newPassword = newPassword;
             if (email !== curEmail || newPassword) updateData.oldPassword = oldPassword;
@@ -178,10 +230,10 @@ const EditProfile = ({ oldUser, editStatus, closeEdit, setUser }) => {
               .then(function (updatedUser) {
                 setGeneralError("Success");
                 setLoading(false);
-                Backendless.UserService.currentUser = updatedUser
+                Backendless.UserService.currentUser = updatedUser;
                 queryClient.invalidateQueries("currentUser");
-                let newUserData = Object.assign(oldUser, updatedUser)
-                setUser(newUserData)
+                let newUserData = Object.assign(oldUser, updatedUser);
+                setUser(newUserData);
               })
               .catch(function (error) {
                 user.email = curEmail;
@@ -202,7 +254,6 @@ const EditProfile = ({ oldUser, editStatus, closeEdit, setUser }) => {
                 }
                 setLoading(false);
               });
-            
           })
           .catch((error) => {
             console.log(error);
@@ -233,10 +284,10 @@ const EditProfile = ({ oldUser, editStatus, closeEdit, setUser }) => {
             )
           )}
           <form class={style["edit-form"]} onSubmit={updateUser}>
-            <input id={style["pp-input"]} type="file" accept="image/png, image/jpg, image/jpeg, image/gif" onInput={previewPP} />
+            <input id={style["pp-input"]} type="file" accept="image/png, image/jpg, image/jpeg, image/gif" onInput={submitPP} />
             <label for={style["pp-input"]} class={style["pp-label"]}>
               <div class={style["pp-img"] + " " + (newPPicture !== "" && style["img-active"])}>
-                <img src={newPPicture || user?.profilePicture || ppPlaceholder} />
+                <img src={newPPPreview || user?.profilePicture?.small || ppPlaceholder} />
                 <i class="fa-solid fa-circle-plus"></i>
               </div>
               <div class={style["pp-text"]}>
@@ -262,10 +313,10 @@ const EditProfile = ({ oldUser, editStatus, closeEdit, setUser }) => {
                 <i class="fa-regular fa-circle-xmark"></i> {errors.ppError}
               </p>
             )}
-            <input id={style["banner-input"]} type="file" accept="image/png, image/jpg, image/jpeg, image/gif" onInput={previewBanner} />
+            <input id={style["banner-input"]} type="file" accept="image/png, image/jpg, image/jpeg, image/gif" onInput={submitBanner} />
             <label for={style["banner-input"]} class={style["pp-label"] + " " + style["banner-label"]}>
               <div class={style["pp-img"] + " " + (newBannerPicture && style["img-active"])}>
-                <img src={newBannerPicture || user?.banner || bannerPlaceholder} />
+                <img src={newBannerPreview || user?.banner?.small || bannerPlaceholder} />
                 <i class="fa-solid fa-circle-plus"></i>
               </div>
               <div class={style["pp-text"]}>

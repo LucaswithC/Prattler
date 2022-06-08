@@ -43,7 +43,7 @@ const CommentCard = ({ data, user }) => {
     <Link href={"/post/" + data.objectId} class={style["comment"]}>
       <div>
         <div class={style["comment-header"]}>
-        <Link href={"/profile/" + data.post.creator.username} onClick={(e) => e.stopPropagation()}><img src={data.post.creator.profilePicture} class={style["pp-img"]} /></Link>
+        <Link href={"/profile/" + data.post.creator.username} onClick={(e) => e.stopPropagation()}><img src={data.post.creator.profilePicture?.small} class={style["pp-img"]} /></Link>
           <Link href={"/profile/" + data.post.creator.username} class="smaller" onClick={(e) => e.stopPropagation()}>
             <p class="m-0">
               <strong>{data.post.creator.name}</strong>

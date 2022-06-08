@@ -255,7 +255,7 @@ const PostedCard = ({ postId }) => {
             <div class={style["posted-card"]}>
               <div class={style["posted-card-header"]}>
                 <Link href={"/profile/" + post.post.creator.username}>
-                  <img src={post.post.creator.profilePicture} />
+                  <img src={post.post.creator.profilePicture?.small} />
                 </Link>
                 <Link href={"/profile/" + post.post.creator.username} class={style["posted-card-header-main"]}>
                   <p>
@@ -294,8 +294,8 @@ const PostedCard = ({ postId }) => {
               {post.post.images.length > 0 && (
                 <div class={style["posted-card-pictures"] + " " + (post.post.images.length % 2 === 0 ? style["even"] : style["odd"])}>
                   {post.post.images.map((img) => (
-                    <a class={"chocolat-image-" + post.objectId} href={img} title="image caption a">
-                      <img src={img} />
+                    <a class={"chocolat-image-" + post.objectId} href={img.original} title="image caption a">
+                      <img src={img.small} />
                     </a>
                   ))}
                 </div>
@@ -427,8 +427,8 @@ const PostedCard = ({ postId }) => {
             <div class="card-body">
               {homeUser.map((user) => (
                 <Link href={"/profile/" + user.username} class={style["follow-card"]}>
-                  <img class={style["follow-banner"]} src={user.banner || bannerPlaceholder} />
-                  <img class={style["follow-profile-picture"]} src={user.profilePicture || ppPlaceholder} />
+                  <img class={style["follow-banner"]} src={user.banner?.small || bannerPlaceholder} />
+                  <img class={style["follow-profile-picture"]} src={user.profilePicture?.small || ppPlaceholder} />
                   <div class={style["follow-head"]}>
                     <div class={style["follow-name"]}>
                       <p class="m-0">

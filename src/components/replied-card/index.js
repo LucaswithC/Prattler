@@ -9,7 +9,7 @@ const RepliedCard = ({ data, single }) => {
   return (
     <Link href={data.type === "removed" ? "#" : "/post/" + data.objectId} class={style["reply-cont"] + " " + (single && style["single"]) + " " + (data.type === "removed" && style["removed"])}>
       <div class={style["reply-left"]}>
-        <img src={data.profilePicture || ProfilePlaceholder} />
+        <img src={data.profilePicture?.small || ProfilePlaceholder} />
       </div>
       <div class={style["reply-right"]}>
         <p class="small m-0">

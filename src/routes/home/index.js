@@ -207,8 +207,8 @@ const HomeUserBox = ({ user }) => {
 
   return (
     <Link href={"/profile/" + user.username} class={style["follow-card"]}>
-      <img class={style["follow-banner"]} src={user.banner || bannerPlaceholder} />
-      <img class={style["follow-profile-picture"]} src={user.profilePicture || ppPlaceholder} />
+      <img class={style["follow-banner"]} src={user.banner?.small || bannerPlaceholder} />
+      <img class={style["follow-profile-picture"]} src={user.profilePicture?.small || ppPlaceholder} />
       <div class={style["follow-head"]}>
         <div class={style["follow-name"]}>
           <p class="m-0">

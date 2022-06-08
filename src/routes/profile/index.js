@@ -201,10 +201,10 @@ const Profile = ({ userFilter, filter }) => {
               {modalState && <FollowList type={modalType} userId={user.objectId} curUser={curUser} closeModal={closeModal} />}
             </div>
           </div>
-          <img class={style["header-img"]} src={user?.banner || bannerPlaceholder} />
+          <img class={style["header-img"]} src={user?.banner?.original || bannerPlaceholder} />
           <div class="container">
             <div class={style["profile-header"]}>
-              <img class={style["profile-picture"]} src={user?.profilePicture || ppPlaceholder} />
+              <img class={style["profile-picture"]} src={user?.profilePicture?.medium || ppPlaceholder} />
               <div class={style["profile-main"]}>
                 <div class={style["profile-name-info"]}>
                   <div>
@@ -380,7 +380,7 @@ const UserFollow = ({ followUser, curUser, closeModal }) => {
       <div class={style["follower-item-main"]}>
         <div onClick={closeModal}>
           <div class={style["follower-header"]}>
-            <img src={user.profilePicture} />
+            <img src={user.profilePicture?.small} />
             <div>
               <p class="m-0">
                 <strong>{user.name}</strong>

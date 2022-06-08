@@ -121,7 +121,7 @@ const Nav = () => {
               }
             </Match>
             <Link href="/profile/me" activeClassName={style["account-active"]} class={style.account + " " + style["item-desktop"]}>
-              <img src={user?.profilePicture || ppPlaceholder} height="40" width="40" style={{ objectFit: "cover", borderRadius: "50%" }} />
+              <img src={user?.profilePicture?.small || ppPlaceholder} height="40" width="40" style={{ objectFit: "cover", borderRadius: "50%" }} />
             </Link>
           </div>
         ) : (
@@ -154,7 +154,7 @@ const Nav = () => {
         </Match>
         {user && (
           <Link activeClassName={style.active} class={style["nav-item"]} href="/profile/me">
-            <img src={user.profilePicture} />
+            <img src={user.profilePicture?.small || ppPlaceholder} />
             Account
           </Link>
         )}

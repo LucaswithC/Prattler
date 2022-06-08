@@ -13,12 +13,17 @@ import { route } from "preact-router";
 
 import useClickOutside from "use-click-outside";
 
+import convert from "image-file-resize";
+import {renameFile, getHeightAndWidthFromDataUrl, calculateAspectRatioFit} from "../other/files"
+
+
 const PostCard = ({ user, commentOn }) => {
   const queryClient = useQueryClient();
   const [replyStatus, setReplyStatus] = useState(false);
   const [replySetting, setReplySetting] = useState("everyone");
   const [postInput, setPostInput] = useState("");
   const [uploadImg, setUploadImg] = useState([]);
+  const [imgFiles, setImgFiles] = useState([])
   const [uploadImgStatus, setUploadStatus] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -55,12 +60,18 @@ const PostCard = ({ user, commentOn }) => {
     });
     await Promise.all(files).then((res) => {
       let imgArr = [...uploadImg, ...res];
+      setImgFiles([...imgFiles, ...images])
       setUploadImg(imgArr.slice(0, 4));
       if (imgArr.slice(4).length > 0) {
         toastError("You can only upload 4 images");
       }
     });
   };
+
+  useEffect(() => {
+    console.log(imgFiles)
+    console.log(uploadImg)
+  }, [uploadImg])
 
   function startImgDrag(ev, index) {
     ev.dataTransfer.setData("text", index);
@@ -85,12 +96,17 @@ const PostCard = ({ user, commentOn }) => {
       ev.currentTarget.classList.remove(style["img-fade"]);
       ev.preventDefault();
       let data = ev.dataTransfer.getData("text");
-      let img1 = uploadImg[data];
-      let img2 = uploadImg[index];
+      if(!["0", "1", "2", "3"].includes(data)) return;
+      let [img1, file1] = [uploadImg[data], imgFiles[data]]
+      let [img2, file2] = [uploadImg[index], imgFiles[index]];
       let imgArr = [...uploadImg];
+      let filesArr = [...imgFiles];
       imgArr[index] = img1;
       imgArr[data] = img2;
+      filesArr[index] = file1
+      filesArr[data] = file2
       setUploadImg(imgArr);
+      setImgFiles(filesArr)
     }
   }
   var enterTarget = null;
@@ -120,6 +136,7 @@ const PostCard = ({ user, commentOn }) => {
 
   function onUploadDrop(e) {
     e.preventDefault();
+    e.currentTarget.classList.remove(style["post-active-drop"]);
     uploadDropLeave(e);
     if (e.dataTransfer.files.length > 0) {
       previewImage(e.dataTransfer.files);
@@ -128,15 +145,15 @@ const PostCard = ({ user, commentOn }) => {
 
   function deleteImg(e, index) {
     e.stopPropagation();
-    let imgArr = [...uploadImg];
-    let firstHalf = imgArr.slice(0, index);
-    let lastHalf = imgArr.slice(index, imgArr.length);
-    lastHalf.shift();
-    imgArr = [...firstHalf, ...lastHalf];
-    setUploadImg(imgArr);
+    let uplImg = [...uploadImg]
+    let imgFil = [...imgFiles]
+    uplImg.splice(index,1)
+    imgFil.splice(index,1)
+    setUploadImg(uplImg);
+    setImgFiles(imgFil)
   }
 
-  const uploadPicture = async (file, upload) => {
+  const uploadPictureOLD = async (file, upload) => {
     setUploadStatus("Uploading");
     let cloudname = "dtc8u5oa0";
     const fileForm = new FormData();
@@ -160,11 +177,68 @@ const PostCard = ({ user, commentOn }) => {
     return imgUpload;
   };
 
+  const uploadPicture = async (file, folder, override, id, index) => {
+    setUploadStatus("Uploading");
+    const fileAsDataURL = window !== undefined && window.URL.createObjectURL(file);
+    const dimension = await getHeightAndWidthFromDataUrl(fileAsDataURL);
+
+    let sizes = {
+      medium: calculateAspectRatioFit(dimension.width, dimension.height, 700),
+      small: calculateAspectRatioFit(dimension.width, dimension.height, 350),
+    };
+
+    let images = {
+      original: renameFile(file, folder + "-" + id + "-" + index + "." + file.type.split("/")[1]),
+    };
+    await convert({
+      file: renameFile(file, folder + "-" + id + "-" + index + "-medium." + file.type.split("/")[1]),
+      width: sizes.medium.width,
+      height: sizes.medium.height,
+      type: file.type.split("/")[1],
+    })
+      .then((resp) => {
+        images.medium = resp;
+      })
+      .catch((error) => {
+        throw error;
+      });
+    await convert({
+      file: renameFile(file, folder + "-" + id + "-" + index + "-small." + file.type.split("/")[1]),
+      width: sizes.small.width,
+      height: sizes.small.height,
+      type: file.type.split("/")[1],
+    })
+      .then((resp) => {
+        images.small = resp;
+      })
+      .catch((error) => {
+        console.log(file.type.split("/")[1], error);
+        throw error;
+      });
+    return await Promise.all([
+      Backendless.Files.upload(images.original, folder, override),
+      images.medium.size < images.original.size ? Backendless.Files.upload(images.medium, folder, override) : null,
+      (images.small.size < images.medium.size && images.small.size < images.original.size) ? Backendless.Files.upload(images.small, folder, override) : null,
+    ])
+      .then((values) => {
+        return {
+          original: values[0].fileURL,
+          medium: values[1]?.fileURL || values[0]?.fileURL,
+          small: values[2]?.fileURL || values[1]?.fileURL || values[0]?.fileURL,
+        };
+      })
+      .catch((err) => {
+        setUploadStatus("Error");
+        throw err;
+      });
+  };
+
   const sendPost = async (e) => {
     e.preventDefault();
     setLoading(true);
     const promises = [];
-    uploadImg.forEach((img) => promises.push(uploadPicture(img)));
+    const randomId = Date.now() + "" + Math.floor(Math.random() * 100000)
+    imgFiles.forEach((img, index) => promises.push(uploadPicture(img, "postImages",false, randomId, index)));
     Promise.all(promises).then((values) => {
       setUploadStatus("");
       let newPost = {
@@ -230,7 +304,7 @@ const PostCard = ({ user, commentOn }) => {
       )}
       <div>
         <form onSubmit={sendPost} class={style["post-card-body"]}>
-          <img class={style["post-pp"]} src={user?.profilePicture || ppPlaceholder} />
+          <img class={style["post-pp"]} src={user?.profilePicture?.small || ppPlaceholder} />
           <div class={style["post-card-body-main"]}>
             <textarea
               id="post-input"
