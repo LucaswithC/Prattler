@@ -68,11 +68,6 @@ const PostCard = ({ user, commentOn }) => {
     });
   };
 
-  useEffect(() => {
-    console.log(imgFiles)
-    console.log(uploadImg)
-  }, [uploadImg])
-
   function startImgDrag(ev, index) {
     ev.dataTransfer.setData("text", index);
   }

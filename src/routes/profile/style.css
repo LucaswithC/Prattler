@@ -13,11 +13,7 @@
     border-radius: 50%;
     border: 5px solid rgb(var(--grey-8));
     z-index: 2;
-    position: absolute;
-    top: -190px;
-    margin: 0 auto;
-    left: 50%;
-    transform: translateX(-50%);
+    margin: -120px auto 0;
 }
 
 .profile-header {
@@ -148,6 +144,9 @@
         text-align: flex-start;
         gap: 0;
         padding-top: 50px;
+    }
+    .profile-picture {
+        margin-bottom: 20px;
     }
     .profile-name-info {
         flex-wrap: wrap;

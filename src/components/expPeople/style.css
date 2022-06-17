@@ -14,19 +14,21 @@
 }
 
 .people-pp {
-    display: block;
-    width: 100px;
+    width: 150px;
     aspect-ratio: 1/1;
-    margin: 0 auto;
-    margin-top: -90px;
-    outline: 5px solid rgb(var(--grey-7));
+    display: inline-block;
+    margin: -50px auto 0;
+    outline: 5px solid rgb(var(--grey-8));
     border-radius: 50%;
     object-fit: cover;
+    flex: 0 0 150px;
 }
 
 .people-body {
     display: flex;
+    align-items: flex-start;
     gap: 20px;
+    flex-wrap: wrap;
 }
 
 .people-left {
@@ -39,11 +41,21 @@
 }
 
 @media (max-width: 600px) {
-    .people-body {
-        flex-direction: column;
+    .people-banner {
+        display: none;
+    }
+    .people-pp {
+        margin: 0 auto;
+        width: 50px;
+        flex: 0 0 50px;
+    }
+    .people-left p:first-child {
+        margin-top: 0;
     }
     .people-right {
         padding-top: 0;
         text-align: center;
+        display: block;
+        width: 100%;
     }
 }

@@ -13,7 +13,7 @@ import ppPlaceholder from "../../assets/icons/pp_placeholder.svg";
 
 const { encode, decode } = require("url-encode-decode");
 
-const Nav = () => {
+const Nav = ({screen}) => {
   const queryClient = useQueryClient();
   const {
     status: userStatus,
@@ -25,6 +25,7 @@ const Nav = () => {
 
   const [recentSearchesOpen, setRecentSearchesOpen] = useState(false);
   const [recentSearches, setRecentSearches] = useState([]);
+  const [keyboardVis, serKeyboardVis] = useState("")
 
   const searchSuggRef = useRef();
 
@@ -58,12 +59,14 @@ const Nav = () => {
   }
 
   return (
+    <>
     <div>
       <header class={style["nav-cont"]}>
         <Link href="/" class={style["logo-cont"]}>
           <img class={style["nav-logo"] + " " + style["item-desktop"]} src={AppLogo} />
           <img class={style["nav-logo"] + " " + style["item-mobile"]} src={AppLogoSmall} />
         </Link>
+        {String(keyboardVis)}
         <nav>
           {user && (
             <Link activeClassName={style.active} class={style["nav-item"] + " " + style["item-desktop"]} href="/">
@@ -120,6 +123,19 @@ const Nav = () => {
                 )
               }
             </Match>
+            <Match path="/chats/:chatId?">
+              {({ matches }) =>
+                !matches ? (
+                  <Link href="/chats">
+                    <i class="fa-regular fa-message"></i>
+                  </Link>
+                ) : (
+                  <Link href="/chats">
+                    <i class={"fa-solid fa-message " + style["active-bookmark"]}></i>
+                  </Link>
+                )
+              }
+            </Match>
             <Link href="/profile/me" activeClassName={style["account-active"]} class={style.account + " " + style["item-desktop"]}>
               <img src={user?.profilePicture?.small || ppPlaceholder} height="40" width="40" style={{ objectFit: "cover", borderRadius: "50%" }} />
             </Link>
@@ -135,31 +151,30 @@ const Nav = () => {
           </div>
         )}
       </header>
-
-      <nav class={style["nav-mobile"]}>
-        {user && (
-          <Link activeClassName={style.active} class={style["nav-item"]} href="/">
-            <i class="fa-solid fa-house"></i>
-            Home
-          </Link>
-        )}
-
-        <Match path="/explore/:filter?/:searchTerm?">
-          {({ matches, path, url }) => (
-            <Link class={style["nav-item"] + " " + (matches && style.active)} href={matches ? path : "/explore/top"}>
-              <i class="fa-solid fa-compass"></i>
-              Explore
-            </Link>
-          )}
-        </Match>
-        {user && (
-          <Link activeClassName={style.active} class={style["nav-item"]} href="/profile/me">
-            <img src={user.profilePicture?.small || ppPlaceholder} />
-            Account
-          </Link>
-        )}
-      </nav>
     </div>
+    <nav class={style["nav-mobile"] + " " + (screen === "fullscreen" && style["mobile-full"])}>
+    {user && (
+      <Link activeClassName={style.active} class={style["nav-item"]} href="/">
+        <i class="fa-solid fa-house"></i>
+        Home
+      </Link>
+    )}
+
+    <Match path="/explore/:filter?/:searchTerm?">
+      {({ matches, path, url }) => (
+        <Link class={style["nav-item"] + " " + (matches && style.active)} href={matches ? path : "/explore/top"}>
+          <i class="fa-solid fa-compass"></i>
+          Explore
+        </Link>
+      )}
+    </Match>
+    {user && (
+      <Link activeClassName={style.active} class={style["nav-item"]} href="/profile/me">
+        <img src={user.profilePicture?.small || ppPlaceholder} />
+        Account
+      </Link>
+    )}
+  </nav></>
   );
 };
 

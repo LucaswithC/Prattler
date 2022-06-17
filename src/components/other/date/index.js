@@ -15,10 +15,6 @@ export default function createDate(dateC) {
     } else {
         let dateNow = new Date(now);
         let dateCreated = new Date(dateC);
-        return (
-            <p class="smaller m-0">
-              {dateCreated.getDate()}. {months[dateCreated.getMonth()]} {dateNow.getFullYear() !== dateCreated.getFullYear() && dateCreated.getFullYear()}
-            </p>
-          );
+        return `${dateCreated.getDate()}. ${months[dateCreated.getMonth()]} ${dateNow.getFullYear() !== dateCreated.getFullYear() ? dateCreated.getFullYear() : ""}`;
     }
   }

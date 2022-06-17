@@ -1,0 +1,44 @@
+.chats {
+    height: 0px;
+    display: flex;
+    justify-content: flex-start;
+    align-items: stretch;
+    flex-grow: 1;
+    position: relative;
+}
+
+.no-chat {
+    background: rgb(var(--grey-6));
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    flex-grow: 1;
+}
+
+.no-chat button {
+    display: none;
+}
+
+@media (max-width: 850px) {
+    .no-chat button {
+        display: block;
+    }
+}
+
+.modal-label {
+    font-size: 0.8rem;
+    margin-top: 15px;
+    margin-bottom: 5px;
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+.channel-modal button {
+    margin-top: 20px;
+    margin-left: auto;
+    margin-bottom: 10px;
+    display: block;
+}

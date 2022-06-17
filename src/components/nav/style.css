@@ -184,6 +184,11 @@ nav *:not(:last-child) {
 	justify-content: space-evenly;
 }
 
+.nav-mobile.mobile-full {
+	position: static;
+	order: 3;
+}
+
 .nav-mobile .nav-item {
 	display: flex;
 	flex-direction: column;

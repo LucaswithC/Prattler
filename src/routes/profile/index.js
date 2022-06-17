@@ -347,8 +347,8 @@ const UserFollow = ({ followUser, curUser, closeModal }) => {
   async function follow(e) {
     e.stopPropagation();
     e.preventDefault();
-    toastInfo("Please login to follow");
     if (!curUser) {
+      toastInfo("Please login to follow");
       route("/signup");
       return;
     }
