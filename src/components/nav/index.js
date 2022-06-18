@@ -92,7 +92,7 @@ const Nav = ({screen}) => {
                   onFocus={openRecentSearches}
                   name="searchInput"
                   type="search"
-                  placeholder="#great"
+                  placeholder="Search"
                   class={style["nav-search"]}
                   autocomplete="off"
                 ></input>

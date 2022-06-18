@@ -125,12 +125,12 @@ const NewChannel = ({ modalOpen, setModalOpen, setSelectedChannel, setChannelDet
               <label>Channel Name</label>
               <span class="dimmed">{name.length}/30</span>
             </div>
-            <input type="text" placeholder="The great Soup Convention" value={name} onInput={(e) => setName(e.target.value)} maxlength="30" />
+            <input type="text" placeholder="Your Channel Name" value={name} onInput={(e) => setName(e.target.value)} maxlength="30" />
             <div class={style["modal-label"]}>
               <label>Channel Description</label>
               <span class="dimmed">{desc.length}/250</span>
             </div>
-            <textarea placeholder="We like to try good Soup" value={desc} onInput={(e) => setDesc(e.target.value)} maxlength="250"></textarea>
+            <textarea placeholder="Describe your Channel as best as possible" value={desc} onInput={(e) => setDesc(e.target.value)} maxlength="250"></textarea>
             {name.length <= 0 || name.length > 30 ? (
               <button disabled={true} class="disabled">
                 Save
