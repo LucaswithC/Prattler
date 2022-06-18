@@ -140,6 +140,10 @@
     transform: translateX(0%);
 }
 
+.channel-desc {
+    white-space: pre;
+}
+
 .close-sidebar {
     display: none;
 }

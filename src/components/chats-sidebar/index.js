@@ -241,7 +241,7 @@ const ChannelOveriew = ({ channelDetails, setChannelDetails, selectedChannel }) 
       {selectedChannel && (
         <div class={style["side-body"]}>
           <h4 class="uppercase">{selectedChannel.name}</h4>
-          <p>{selectedChannel.description}</p>
+          <p class={style["channel-desc"]}>{selectedChannel.description}</p>
           <h4 class="uppercase">Members</h4>
           <div class={style["chat-groups"]}>
             {membersStatus === "success" &&
