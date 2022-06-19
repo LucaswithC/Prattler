@@ -141,7 +141,7 @@
 }
 
 .channel-desc {
-    white-space: pre;
+    white-space: pre-line;
 }
 
 .close-sidebar {

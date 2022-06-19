@@ -248,10 +248,10 @@ const PostedCard = ({ postId }) => {
             )}
             {post.type === "Comment" && (
               <p class={style["post-notice"]}>
-                <i class="fa-regular fa-comment"></i> {post.post.creator.name} commented on {post.replyInformation.creatorName}
+                <i class="fa-regular fa-comment"></i> {post.post.creator.name} commented {post?.replyInformation?.creatorName && "on" + post?.replyInformation?.creatorName}
               </p>
             )}
-            {!!post?.replyInformation && <RepliedCard data={post.replyInformation} single={true} />}
+            {"replyInformation" in post && <RepliedCard data={post.replyInformation} single={true} />}
             <div class={style["posted-card"]}>
               <div class={style["posted-card-header"]}>
                 <Link href={"/profile/" + post.post.creator.username}>

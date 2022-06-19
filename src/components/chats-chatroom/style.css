@@ -87,7 +87,7 @@
 
 .message-text {
     margin-top: 5px;
-    white-space: pre;
+    white-space: pre-line;
 }
 
 .self .message-body {

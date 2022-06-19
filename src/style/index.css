@@ -195,7 +195,7 @@ input:focus, textarea:focus {
 }
 
 .text-pre-wrap {
-	white-space: pre-wrap;
+	white-space: pre-line;
 }
 
 .m-0 {

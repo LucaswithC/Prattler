@@ -29,6 +29,7 @@ const Sidebar = ({ selectedChannel, setSelectedChannel, setModalOpen, channelDet
           setChannelDetails={setChannelDetails}
           channelDetails={channelDetails}
           setModalOpen={setModalOpen}
+          setSidebarOpen={setSidebarOpen}
         />
         <ChannelOveriew channelDetails={channelDetails} setChannelDetails={setChannelDetails} selectedChannel={selectedChannel} />
       </div>
@@ -41,7 +42,7 @@ const Sidebar = ({ selectedChannel, setSelectedChannel, setModalOpen, channelDet
 
 export default Sidebar;
 
-const AllChannels = ({ setSelectedChannel, setChannelDetails, channelDetails, setModalOpen }) => {
+const AllChannels = ({ setSelectedChannel, setChannelDetails, channelDetails, setModalOpen, setSidebarOpen }) => {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   // const {
@@ -104,6 +105,7 @@ const AllChannels = ({ setSelectedChannel, setChannelDetails, channelDetails, se
   function openChannel(ip, id) {
     setSelectedChannel(channels.pages[ip][id]);
     setChannelDetails(true);
+    setSidebarOpen(false)
   }
 
   return (
@@ -232,7 +234,7 @@ const ChannelOveriew = ({ channelDetails, setChannelDetails, selectedChannel }) 
 
   return (
     <div class={style["channel-overview"] + " " + (channelDetails && style.active)}>
-      <div class={style["side-header"]} onClick={() => setChannelDetails(false)}>
+      <div class={style["side-header"] + " pointer"} onClick={() => setChannelDetails(false)}>
         <button class="small empty">
           <i class="fa-solid fa-chevron-left"></i>
         </button>{" "}

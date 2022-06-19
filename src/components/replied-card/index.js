@@ -7,7 +7,13 @@ import ProfilePlaceholder from "../../assets/icons/pp_placeholder.svg"
 
 const RepliedCard = ({ data, single }) => {
   return (
-    <Link href={data.type === "removed" ? "#" : "/post/" + data.objectId} class={style["reply-cont"] + " " + (single && style["single"]) + " " + (data.type === "removed" && style["removed"])}>
+    <>
+    {data === null ? (
+      <div class={style["reply-cont"] + " " + (single && style["single"]) + " " + style["removed"]}>
+         <p class="m-0">This post is not available</p>
+      </div>
+    ) : (
+    <Link href={"/post/" + data?.objectId} class={style["reply-cont"] + " " + (single && style["single"])}>
       <div class={style["reply-left"]}>
         <img src={data.profilePicture?.small || ProfilePlaceholder} />
       </div>
@@ -15,10 +21,12 @@ const RepliedCard = ({ data, single }) => {
         <p class="small m-0">
           <strong>{data.creatorName}</strong>
         </p>
-        <p class="smaller dimmed m-0">{data.type !== "removed" && createDate(data.created)}</p>
-        <p class="m-0 mt-1">{data.type === "removed" ? "This post has been removed" : data.text}</p>
+        <p class="smaller dimmed m-0">{createDate(data.created)}</p>
+        <p class="m-0 mt-1">{data.text}</p>
       </div>
     </Link>
+    )}
+    </>
   );
 };
 
