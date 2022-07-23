@@ -9,6 +9,8 @@ import PostCard from "../../components/post-card";
 import CommentCard from "../../components/comment-card";
 import RepliedCard from "../../components/replied-card";
 
+import ppPlaceholder from "../../assets/icons/pp_placeholder.svg";
+
 import useInView from "../../components/other/inView";
 
 import toastError from "../../components/toasts/error";
@@ -248,14 +250,14 @@ const PostedCard = ({ postId }) => {
             )}
             {post.type === "Comment" && (
               <p class={style["post-notice"]}>
-                <i class="fa-regular fa-comment"></i> {post.post.creator.name} commented {post?.replyInformation?.creatorName && "on" + post?.replyInformation?.creatorName}
+                <i class="fa-regular fa-comment"></i> {post.post.creator.name} commented {post?.replyInformation?.creatorName && "on " + post?.replyInformation?.creatorName}
               </p>
             )}
             {"replyInformation" in post && <RepliedCard data={post.replyInformation} single={true} />}
             <div class={style["posted-card"]}>
               <div class={style["posted-card-header"]}>
                 <Link href={"/profile/" + post.post.creator.username}>
-                  <img src={post.post.creator.profilePicture?.small} />
+                  <img src={post.post.creator?.profilePicture?.small || ppPlaceholder} />
                 </Link>
                 <Link href={"/profile/" + post.post.creator.username} class={style["posted-card-header-main"]}>
                   <p>

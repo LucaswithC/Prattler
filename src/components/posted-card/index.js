@@ -163,7 +163,7 @@ const PostedCard = ({ data, user }) => {
         )}
         {data.type === "Comment" && (
           <p class={style["post-notice"]}>
-            <i class="fa-regular fa-comment"></i> {data.post.creator.name} commented {data?.replyInformation?.creatorName && "on" + data?.replyInformation?.creatorName}
+            <i class="fa-regular fa-comment"></i> {data.post.creator.name} commented {data?.replyInformation?.creatorName && "on " + data?.replyInformation?.creatorName}
           </p>
         )}
         {"replyInformation" in data && <RepliedCard data={data?.replyInformation} />}

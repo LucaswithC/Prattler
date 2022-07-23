@@ -173,7 +173,7 @@ const Profile = ({ searchTerm, filter }) => {
                 autocomplete="off"
                 name="searchInput"
                 type="text"
-                placeholder="#Search Posts/People/Hashtags"
+                placeholder="Search Posts/People/Hashtags"
                 value={searchInput}
                 onInput={(e) => setSearchInput(e.target.value)}
               />
