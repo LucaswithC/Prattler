@@ -22,7 +22,7 @@ const RepliedCard = ({ data, single }) => {
           <strong>{data.creatorName}</strong>
         </p>
         <p class="smaller dimmed m-0">{createDate(data.created)}</p>
-        <p class="m-0 mt-1">{data.text}</p>
+        <p class={style["replied-text"] + " m-0 mt-1"}>{data.text}</p>
       </div>
     </Link>
     )}

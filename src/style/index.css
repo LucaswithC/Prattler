@@ -251,6 +251,11 @@ input:focus, textarea:focus {
 	padding: 20px;
 }
 
+.container > div {
+	overflow: hidden;
+  	min-width: 0;
+}
+
 .card {
 	background: rgb(var(--grey-8));
 	padding: 20px;

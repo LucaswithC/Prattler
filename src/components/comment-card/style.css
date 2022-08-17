@@ -26,6 +26,7 @@
 .comment-text {
     margin-top: 10px;
     margin-bottom: 0;
+    word-wrap: break-word;
 }
 
 .comment-likes {

@@ -105,6 +105,10 @@
     object-fit: cover;
 }
 
+.posted-card-body p {
+    word-wrap: break-word;
+}
+
 .posted-card-pictures {
     display: flex;
     flex-wrap: wrap;

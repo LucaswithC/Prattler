@@ -36,6 +36,18 @@
 
 .reply-right {
     flex-grow: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.replied-text {
+    word-wrap: break-word;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2; /* number of lines to show */
+            line-clamp: 2; 
+    -webkit-box-orient: vertical;
 }
 
 .removed {
