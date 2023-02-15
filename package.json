@@ -1,7 +1,7 @@
 {
   "private": false,
   "name": "prattler",
-  "version": "0.1.5",
+  "version": "0.2.0",
   "license": "MIT",
   "scripts": {
     "build": "preact build --no-prerender",
@@ -27,9 +27,9 @@
     "sirv-cli": "1.0.3"
   },
   "dependencies": {
-    "backendless": "^6.3.7",
     "chocolat": "^1.0.5-beta.2",
     "image-file-resize": "^1.0.5",
+    "pocketbase": "^0.10.1",
     "preact": "^10.3.2",
     "preact-render-to-string": "^5.1.4",
     "preact-router": "^3.2.1",

@@ -2,7 +2,6 @@ import { h } from "preact";
 import { Router } from "preact-router";
 import Match from "preact-router/match";
 import Redirect from "../components/Redirect";
-import Backendless from "backendless";
 import { useQuery, useMutation, useQueryClient, QueryClient, QueryClientProvider } from "react-query";
 import { ReactQueryDevtools } from "react-query/devtools";
 
@@ -22,19 +21,10 @@ import Post from "../routes/singlePost"
 import Chats from "../routes/chats"
 import { useEffect, useState } from "preact/hooks";
 
-const APP_ID = "AD410151-2D10-4D0D-FFE5-2F082E483500";
-const API_KEY = "C1715888-39CA-449E-A97C-5BA12DF125B0";
-Backendless.serverURL = "https://eu-api.backendless.com";
-Backendless.initApp(APP_ID, API_KEY);
-
-import "../backendless/services/Posts.js"
-import "../backendless/services/Users.js"
-import "../backendless/services/Messages.js"
-
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      //refetchOnWindowFocus: false,
+      refetchOnWindowFocus: false,
       retry: false
     },
   },
@@ -43,18 +33,18 @@ const queryClient = new QueryClient({
 const App = () => {
   const [curLoc, setCurLoc] = useState("")
 
-  useEffect(() => {
-    function success(result) {
-      console.log("Is login valid?: " + result);
-    }
+  // useEffect(() => {
+  //   function success(result) {
+  //     console.log("Is login valid?: " + result);
+  //   }
 
-    function error(err) {
-      console.log(err.message);
-      console.log(err.statusCode);
-    }
+  //   function error(err) {
+  //     console.log(err.message);
+  //     console.log(err.statusCode);
+  //   }
 
-    Backendless.UserService.isValidLogin().then(success).catch(error);
-  }, []);
+  //   Backendless.UserService.isValidLogin().then(success).catch(error);
+  // }, []);
 
   function location(path) {
     setCurLoc(path.split("/")[1])

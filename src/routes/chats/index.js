@@ -9,6 +9,9 @@ import { route } from "preact-router";
 import Loader from "../../components/loader/loader";
 import toastError from "../../components/toasts/error";
 
+import pb from '../../_pocketbase/connect'
+import { getChannelName, newChannel } from "../../_pocketbase/services/Messages";
+
 const Chats = ({ chatId }) => {
   const queryClient = useQueryClient();
   const [selectedChannel, setSelectedChannel] = useState({});
@@ -21,7 +24,7 @@ const Chats = ({ chatId }) => {
     data: user,
     error: userError,
   } = useQuery("currentUser", async () => {
-    return Backendless.UserService.getCurrentUser()
+    return pb.authStore.model
   }, {
     retry: false
   });
@@ -36,18 +39,16 @@ const Chats = ({ chatId }) => {
   }, [userStatus]);
 
   useEffect(async () => {
-    if(userError?.code === 3064) {
-      Backendless.UserService.logout()
-      .then(function () {
-        queryClient.invalidateQueries("currentUser")
-        location.reload();
-      })
+    if(user && !pb.authStore.isValid) {
+      pb.authStore.clear()
+      queryClient.invalidateQueries("currentUser")
+      route("/")
     }
   }, [userStatus])
 
   useEffect(async () => {
     if (!selectedChannel?.name && chatId) {
-      let channelName = await Backendless.APIServices.Messages.getChannelName(chatId);
+      let channelName = await getChannelName(chatId)
       setSelectedChannel(channelName);
       setChannelDetails(true);
     } else if (!chatId) {
@@ -98,13 +99,13 @@ const NewChannel = ({ modalOpen, setModalOpen, setSelectedChannel, setChannelDet
     e.preventDefault();
     setLoading(true);
 
-    Backendless.APIServices.Messages.createChannel(name, desc)
+    newChannel(name, desc)
       .then((res) => {
         setLoading(false);
         setSelectedChannel(res);
         setModalOpen(false);
         setChannelDetails(true);
-        route("/chats/" + res.objectId);
+        route("/chats/" + res.id);
       })
       .catch((err) => {
         setLoading(false);

@@ -6,6 +6,8 @@ import Loader from "../loader/loader";
 import toastError from "../toasts/error";
 
 import ppPlaceholder from "../../assets/icons/pp_placeholder.svg";
+import pb from "../../_pocketbase/connect";
+import { getChannelMembers, getJoinedChannels, getSearchedChannels, joinChannel, leaveChannel } from "../../_pocketbase/services/Messages";
 
 let searchTimeout;
 
@@ -61,11 +63,11 @@ const AllChannels = ({ setSelectedChannel, setChannelDetails, channelDetails, se
     hasNextPage,
   } = useInfiniteQuery(
     "joined-channels",
-    async ({ pageParam = 0 }) => {
-      return Backendless.APIServices.Messages.getJoinedChannels(pageParam);
+    async ({ pageParam = 1 }) => {
+      return getJoinedChannels(20, pageParam)
     },
     {
-      getNextPageParam: (lastPage, pages) => (lastPage.length >= 20 ? pages.length * 20 : undefined),
+      getNextPageParam: (lastPage, pages) => (lastPage.totalPages > pages.length ? pages.length + 1 : undefined),
     }
   );
   const {
@@ -77,7 +79,7 @@ const AllChannels = ({ setSelectedChannel, setChannelDetails, channelDetails, se
   } = useQuery(
     "searched-channels",
     async () => {
-      return Backendless.APIServices.Messages.getSearchedChannels(searchTerm);
+      return getSearchedChannels(searchTerm)
     },
     {
       enabled: false,
@@ -85,15 +87,15 @@ const AllChannels = ({ setSelectedChannel, setChannelDetails, channelDetails, se
     }
   );
 
-  useEffect(async () => {
-    if(channelError?.code === 3064 || searchError?.code === 3064) {
-      Backendless.UserService.logout()
-      .then(function () {
-        queryClient.invalidateQueries("currentUser")
-        location.reload();
-      })
-    }
-  }, [channelStatus, searchStatus])
+  // useEffect(async () => {
+  //   if(channelError?.code === 3064 || searchError?.code === 3064) {
+  //     // Backendless.UserService.logout()
+  //     // .then(function () {
+  //     //   queryClient.invalidateQueries("currentUser")
+  //     //   location.reload();
+  //     // })
+  //   }
+  // }, [channelStatus, searchStatus])
 
   useEffect(() => {
     clearTimeout(searchTimeout);
@@ -103,7 +105,7 @@ const AllChannels = ({ setSelectedChannel, setChannelDetails, channelDetails, se
   }, [searchTerm]);
 
   function openChannel(ip, id) {
-    setSelectedChannel(channels.pages[ip][id]);
+    setSelectedChannel(channels.pages[ip].items[id]);
     setChannelDetails(true);
     setSidebarOpen(false)
   }
@@ -137,7 +139,7 @@ const AllChannels = ({ setSelectedChannel, setChannelDetails, channelDetails, se
               <h4 class="uppercase">Search Results</h4>
               {searchStatus === "success" && !searchFetching ? (
                 searchResults.length > 0 ? (
-                  [...searchResults].map((c, id) => <SearchedChannel channel={c} index={id} />)
+                  searchResults.map((c, id) => <SearchedChannel channel={c} index={id} />)
                 ) : (
                   <p>No Channels found</p>
                 )
@@ -148,9 +150,9 @@ const AllChannels = ({ setSelectedChannel, setChannelDetails, channelDetails, se
           ) : channelStatus === "success" ? (
             <>
               <h4 class="uppercase">Your Channels</h4>
-              {channels.pages?.[0].length > 0 ? (
-                channels.pages.map((p, ip) => p.map((c, id) => (
-                  <Link href={"/chats/" + c.objectId}>
+              {channels.pages?.[0].totalItems > 0 ? (
+                channels.pages.map((p, ip) => p.items.map((c, id) => (
+                  <Link href={"/chats/" + c.id}>
                     <div class={"unset " + style["group"]} onClick={() => openChannel(ip, id)}>
                       <div class={style["group-img"]}>
                         {c.name
@@ -198,31 +200,30 @@ const ChannelOveriew = ({ channelDetails, setChannelDetails, selectedChannel }) 
     isFetchingNextPage,
     fetchNextPage,
     hasNextPage,
-  } = useInfiniteQuery(
-    "members-" + selectedChannel.objectId,
-    async ({ pageParam = 0 }) => {
-      if (selectedChannel.objectId) {
-        return Backendless.APIServices.Messages.getChannelMembers(selectedChannel.objectId, pageParam);
+  } = useQuery(
+    "members-" + selectedChannel.id,
+    async () => {
+      if (selectedChannel.id) {
+        return getChannelMembers(selectedChannel.id)
       } else throw new Error();
     },
     {
-      enabled: !!selectedChannel?.objectId,
-      getNextPageParam: (lastPage, pages) => (lastPage.length >= 20 ? pages.length * 20 : undefined),
+      enabled: !!selectedChannel?.id,
     }
   );
 
   useEffect(async () => {
     if(membersError?.code === 3064) {
-      Backendless.UserService.logout()
-      .then(function () {
-        queryClient.invalidateQueries("currentUser")
-        location.reload();
-      })
+      // Backendless.UserService.logout()
+      // .then(function () {
+      //   queryClient.invalidateQueries("currentUser")
+      //   location.reload();
+      // })
     }
   }, [membersStatus])
 
   function unfollowChannel() {
-    Backendless.APIServices.Messages.leaveChannel(selectedChannel.objectId)
+    leaveChannel(selectedChannel.id)
       .then((res) => {
         queryClient.invalidateQueries("joined-channels");
         setChannelDetails(false);
@@ -243,19 +244,18 @@ const ChannelOveriew = ({ channelDetails, setChannelDetails, selectedChannel }) 
       {selectedChannel && (
         <div class={style["side-body"]}>
           <h4 class="uppercase">{selectedChannel.name}</h4>
-          <p class={style["channel-desc"]}>{selectedChannel.description}</p>
+          <p class={style["channel-desc"]}>{selectedChannel.desc}</p>
           <h4 class="uppercase">Members</h4>
           <div class={style["chat-groups"]}>
+            {console.log(members)}
             {membersStatus === "success" &&
-              members.pages.map((p) =>
-                p.map((m) => (
-                  <Link href={"/profile/" + m.username} class={"unset " + style["group"]}>
-                    <img src={m?.profilePicture?.small || ppPlaceholder} class={style["member-img"]}>
+              members.map((m) =>
+                  <Link href={"/profile/" + m.id} class={"unset " + style["group"]}>
+                    <img src={m?.avatar ? pb.getFileUrl(m, m.avatar, {thumb: "60x0"}) : ppPlaceholder} class={style["member-img"]}>
                       FD
                     </img>
                     <h4>{m.name}</h4>
                   </Link>
-                ))
               )}
             <div>
               {isFetchingNextPage || membersStatus === "loading" ? (
@@ -279,50 +279,51 @@ const ChannelOveriew = ({ channelDetails, setChannelDetails, selectedChannel }) 
 };
 
 const SearchedChannel = ({ channel, index }) => {
-  const [followed, setFollowed] = useState(channel.joined);
+  const [followed, setFollowed] = useState(channel.members.includes(pb.authStore?.model?.id));
+  console.log(channel, pb.authStore.model.id)
   const queryClient = useQueryClient();
 
   function followChannel() {
     if (!followed) {
-      Backendless.APIServices.Messages.joinChannel(channel.objectId)
-        .then((res) => queryClient.invalidateQueries("joined-channels"))
-        .catch((err) => {
-          setFollowed(!followed);
-          toastError("Something went wrong joining the Channel");
+      joinChannel(channel.id)
+        .then((res) => {
+          queryClient.invalidateQueries("joined-channels")
+          setFollowed(true);
           queryClient.setQueryData("searched-channels", (old) => {
             let oldData = [...old]
-            oldData[index].joined = !followed;
+            oldData[index].members.push(pb.authStore.model.id)
             return [...oldData];
           });
+        })
+        .catch((err) => {
+          setFollowed(false);
+          toastError("Something went wrong joining the Channel");
         });
     } else {
-      Backendless.APIServices.Messages.leaveChannel(channel.objectId)
-        .then((res) => queryClient.invalidateQueries("joined-channels"))
-        .catch((err) => {
-          setFollowed(!followed);
-          toastError("Something went wrong leaving the Channel");
+      leaveChannel(channel.id)
+        .then((res) => {
+          queryClient.invalidateQueries("joined-channels")
+          setFollowed(false);
           queryClient.setQueryData("searched-channels", (old) => {
             let oldData = [...old]
-            oldData[index].joined = !followed;
+            oldData[index].members.filter(m => m !== pb.authStore.model.id)
             return [...oldData];
           });
+        })
+        .catch((err) => {
+          setFollowed(true);
+          toastError("Something went wrong leaving the Channel");
         });
     }
-    setFollowed(!followed);
-    queryClient.setQueryData("searched-channels", (old) => {
-      let oldData = [...old]
-      oldData[index].joined = !followed;
-      return [...oldData];
-    });
   }
 
   useEffect(() => {
-    setFollowed(channel.joined)
+    setFollowed(channel.members.includes(pb.authStore.model.id))
   }, [channel])
 
   return (
     <div class={"unset " + style["group"] + " " + style["search-group"]}>
-      {console.log(index, channel.joined)}
+      {console.log(index, followed)}
       <div class={style["group-img"]}>
         {channel.name
           .split(" ")

@@ -24,8 +24,10 @@ import createDate from "../../components/other/date";
 import useClickOutside from "use-click-outside";
 import Footer from "../../components/footer";
 import { encode } from "url-encode-decode";
+import pb from "../../_pocketbase/connect";
+import { getPostComments, getSinglePost, getTags, hidePost, likePost, removeRepost, repostPost, savePost, unlikePost, unsavePost } from "../../_pocketbase/services/Posts";
 
-const PostedCard = ({ postId }) => {
+const PostedCard = ({ postId, comment }) => {
   const [replySetting, setReplySetting] = useState("everyone");
   const { isInView: loadInView, inViewRef: loadRef } = useInView();
   const [sortComments, setSortComments] = useState("top");
@@ -53,7 +55,7 @@ const PostedCard = ({ postId }) => {
   } = useQuery(
     "currentUser",
     async () => {
-      return Backendless.UserService.getCurrentUser();
+      return pb?.authStore?.model;
     },
     {
       retry: false,
@@ -66,7 +68,7 @@ const PostedCard = ({ postId }) => {
   } = useQuery(
     "post-" + postId,
     async () => {
-      return Backendless.APIServices.Posts.getSinglePost(postId);
+      return getSinglePost(postId, comment !== undefined);
     },
     {
       retry: false,
@@ -79,8 +81,8 @@ const PostedCard = ({ postId }) => {
   } = useQuery(
     "tags-" + postId,
     async () => {
-      let postTags = post.post.text.match(/#\w+/gi);
-      if (postTags) return Backendless.APIServices.Posts.getTags(postTags);
+      let postTags = post.expand.post.text.match(/#\w+/gi);
+      if (postTags) return getTags(postTags);
       return [];
     },
     {
@@ -96,35 +98,34 @@ const PostedCard = ({ postId }) => {
     hasNextPage,
   } = useInfiniteQuery(
     ["post-comments-" + postId, post, sortComments],
-    async ({ pageParam = 0 }) => {
+    async ({ pageParam = 1 }) => {
       let sortBy;
       switch (sortComments) {
         case "newest":
-          sortBy = "post.created DESC";
+          sortBy = "-created";
           break;
         case "oldest":
-          sortBy = "post.created";
+          sortBy = "+created";
           break;
         default:
-          sortBy = "Count(post.likes) DESC";
+          sortBy = "-post.totalLikes,-created";
           break;
       }
-      return Backendless.APIServices.Posts.getPostComments(post.post.postObjectId, { pageSize: 20, pageOffset: pageParam, sortBy });
+      return getPostComments(post.expand.post.id, sortBy, 20, pageParam);
     },
     {
-      getNextPageParam: (lastPage, pages) => (lastPage.length === 20 ? pages.length * 20 : undefined),
+      getNextPageParam: (lastPage, pages) => (lastPage.totalPages > pages.length ? pages.length + 1 : undefined),
       enabled: !!post,
     }
   );
 
   useEffect(async () => {
-    if (userError?.code === 3064 || postError?.code === 3064 || tagsError?.code === 3064 || commentsError?.code === 3064) {
-      Backendless.UserService.logout().then(function () {
-        queryClient.invalidateQueries("currentUser");
-        location.reload();
-      });
+    if (user && !pb.authStore.isValid) {
+      pb.authStore.clear();
+      queryClient.invalidateQueries("currentUser");
+      location.reload();
     }
-  }, [userStatus, postStatus, tagsStatus, commentStatus]);
+  }, [user]);
 
   useClickOutside(extraMenuRef, () => {
     if (extraMenu) setExtraMenu(false);
@@ -138,19 +139,21 @@ const PostedCard = ({ postId }) => {
       if (post !== undefined) {
         if (typeof window !== "undefined") {
           window.scrollTo({ top: 0 });
-          Chocolat(document.querySelectorAll(".chocolat-image-" + post.objectId), {
+          Chocolat(document.querySelectorAll(".chocolat-image-" + post.id), {
             loop: true,
           });
         }
-        setLiked(post.post?.liked);
-        setReposted(post.post?.reposted);
-        setSaved(post.saved);
-        setCommentAmount(post.post?.totalComments || 0);
-        setLikedAmount(post.post?.totalLikes || 0);
-        setRepostedAmount(post.post?.totalRepost || 0);
-        setSavedAmount(post.totalSaved || 0);
+        setLiked(post.expand.post?.didLike);
+        setReposted(post.expand.post?.didRepost);
+        setSaved(post.didSave || false);
+        setCommentAmount(post.expand.post?.totalComments || 0);
+        setLikedAmount(post.expand.post?.totalLikes || 0);
+        setRepostedAmount(post.expand.post?.totalReposts || 0);
+        setSavedAmount(post.totalSaves || 0);
+        setNewComments([]);
       }
     }
+    console.log(post);
   }, [postStatus, post]);
 
   useEffect(() => {
@@ -158,50 +161,71 @@ const PostedCard = ({ postId }) => {
   }, [loadInView]);
 
   async function repost(e) {
+    if(!pb.authStore?.model) {
+      toastError("Please login to repost")
+      return
+    }
+    setReposted(!reposted);
     if (!reposted) {
-      setReposted(!reposted);
-      setRepostedAmount(likedAmount + 1);
-      await Backendless.APIServices.Posts.repost(post.post.postObjectId).catch((err) => {
-        setReposted(!liked);
-        setRepostedAmount(likedAmount - 1);
+      setRepostedAmount(repostedAmount + 1);
+      repostPost(post.post).catch((err) => {
+        setReposted(false);
+        setRepostedAmount(repostedAmount);
         toastError(err.message);
       });
     } else {
-      toastError("Delete your Post to remove the repost");
+      setRepostedAmount(repostedAmount - 1)
+      removeRepost(post.post).then(res => {
+        if (post.type === "repost" && user?.id === post.author) {
+          history.back();
+        }
+      }).catch((err) => {
+        setReposted(true);
+        setRepostedAmount(repostedAmount);
+        toastError(err.message);
+      });
     }
   }
 
   async function like(e) {
+    if(!pb.authStore?.model) {
+      toastError("Please login to like")
+      return
+    }
     setLiked(!liked);
     if (!liked) {
       setLikedAmount(likedAmount + 1);
-      await Backendless.APIServices.Posts.likePost(post.post.postObjectId).catch((err) => {
-        setLiked(!liked);
-        setLikedAmount(likedAmount - 1);
+      likePost(post.post).catch((err) => {
+        setLiked(false);
+        setLikedAmount(likedAmount);
         toastError(err.message);
       });
     } else {
       setLikedAmount(likedAmount - 1);
-      await Backendless.APIServices.Posts.unlikePost(post.post.postObjectId).catch((err) => {
-        setLiked(!liked);
-        setLikedAmount(likedAmount + 1);
+      unlikePost(post.post).catch((err) => {
+        setLiked(true);
+        setLikedAmount(likedAmount);
         toastError(err.message);
       });
     }
   }
 
   async function save(e) {
+    if(!user) {
+      toastError("Please login to save a post")
+      return
+    }
     setSaved(!saved);
     if (!saved) {
       setSavedAmount(savedAmount + 1);
-      await Backendless.APIServices.Posts.savePost(post.objectId).catch((err) => {
+      savePost(post.id).catch((err) => {
         setSaved(!saved);
         setSavedAmount(savedAmount - 1);
         toastError(err.message);
       });
     } else {
       setSavedAmount(savedAmount - 1);
-      await Backendless.APIServices.Posts.unsavePost(post.objectId).catch((err) => {
+      unsavePost(post.id).catch((err) => {
         setSaved(!saved);
         setSavedAmount(savedAmount + 1);
         toastError(err.message);
@@ -213,12 +237,13 @@ const PostedCard = ({ postId }) => {
     e.stopPropagation();
     if (typeof window !== "undefined") {
       if (window.confirm("Do you really want to delete your Post?")) {
-        Backendless.APIServices.Posts.removePost(post.post.postObjectId)
+        hidePost(post.id)
           .then((res) => {
             toastSuccess("Post successful removed");
             history.back();
           })
           .catch((err) => {
+            console.log(err)
             toastError("Something went wrong");
           });
       }
@@ -238,34 +263,41 @@ const PostedCard = ({ postId }) => {
             <div class={style["post-back"]} onclick={() => history.back()}>
               <i class="fa-solid fa-arrow-left"></i> Back
             </div>
-            {post.type === "Repost" && (
+            {post.type === "repost" && (
               <p class={style["post-notice"]}>
-                <i class="fa-solid fa-retweet"></i> {post.newPublisher.name} reposted
+                <i class="fa-solid fa-retweet"></i> {post.expand.author.username} reposted
               </p>
             )}
-            {post.type === "Like" && (
+            {post.type === "like" && (
               <p class={style["post-notice"]}>
-                <i class="fa-regular fa-heart"></i> {post.newPublisher.name} liked
+                <i class="fa-regular fa-heart"></i> {post.expand.author.username} liked
               </p>
             )}
-            {post.type === "Comment" && (
+            {post.type === "comment" && (
               <p class={style["post-notice"]}>
-                <i class="fa-regular fa-comment"></i> {post.post.creator.name} commented {post?.replyInformation?.creatorName && "on " + post?.replyInformation?.creatorName}
+                <i class="fa-regular fa-comment"></i> {post.expand.post.expand.author.username} commented{" "}
+                {post?.expand?.comment?.author?.username && "on " + post?.expand?.comment?.author?.username}
               </p>
             )}
-            {"replyInformation" in post && <RepliedCard data={post.replyInformation} single={true} />}
+            {post.comment != "" && <RepliedCard data={post.expand.comment} single={true} />}
             <div class={style["posted-card"]}>
               <div class={style["posted-card-header"]}>
-                <Link href={"/profile/" + post.post.creator.username}>
-                  <img src={post.post.creator?.profilePicture?.small || ppPlaceholder} />
+                <Link href={"/profile/" + post.expand.post.expand.author.id}>
+                  <img
+                    src={
+                      post?.expand?.post?.expand?.author?.avatar
+                        ? pb.getFileUrl(post.expand.post.expand.author, post.expand.post.expand.author.avatar, { thumb: "250x0" })
+                        : ppPlaceholder
+                    }
+                  />
                 </Link>
-                <Link href={"/profile/" + post.post.creator.username} class={style["posted-card-header-main"]}>
+                <Link href={"/profile/" + post.expand.post.expand.author.id} class={style["posted-card-header-main"]}>
                   <p>
-                    <strong>{post.post.creator.name}</strong>
+                    <strong>{post.expand.post.expand.author.name || post.expand.post.expand.author.username}</strong>
                   </p>
-                  <p class="smaller dimmed">{createDate(post.post.created)}</p>
+                  <p class="smaller dimmed">{createDate(post.expand.post.created)}</p>
                 </Link>
-                {user?.username === post.post.creator.username && (
+                {user?.id === post.expand.post.expand.author.id && (
                   <div class={style["posted-extra-menu"]}>
                     <i
                       class="fa-solid fa-ellipsis-vertical pointer"
@@ -286,18 +318,18 @@ const PostedCard = ({ postId }) => {
               </div>
               <div class={style["posted-card-body"]}>
                 <p class="text-pre-wrap">
-                  {reactStringReplace(post.post.text, /(#\w+)/gi, (match, i) => (
+                  {reactStringReplace(post.expand.post.text, /(#\w+)/gi, (match, i) => (
                     <Link href={"/explore/top/" + match.replaceAll("#", "%23")} class="link" onclick={(e) => e.stopPropagation()}>
                       {match}
                     </Link>
                   ))}
                 </p>
               </div>
-              {post.post.images.length > 0 && (
-                <div class={style["posted-card-pictures"] + " " + (post.post.images.length % 2 === 0 ? style["even"] : style["odd"])}>
-                  {post.post.images.map((img) => (
-                    <a class={"chocolat-image-" + post.objectId} href={img.original} title="image caption a">
-                      <img src={img.small} />
+              {post.expand.post.images.length > 0 && (
+                <div class={style["posted-card-pictures"] + " " + (post.expand.post.images.length % 2 === 0 ? style["even"] : style["odd"])}>
+                  {post.expand.post.images.map((img) => (
+                    <a class={"chocolat-image-" + post.id} href={pb.getFileUrl(post.expand.post, img)} title="image caption a">
+                      <img src={pb.getFileUrl(post.expand.post, img, { thumb: "350x0" })} />
                     </a>
                   ))}
                 </div>
@@ -332,13 +364,14 @@ const PostedCard = ({ postId }) => {
                   </div>
                 </div>
               </div>
-              {user && (!(post.post.replyStatus === "followers" && !post.followed) || post.post.creator.ownerId === user.objectId) && (
-                <PostCard user={user} commentOn={{ feedId: post.objectId, objectId: post.post.postObjectId, onFinish: onCommentPostet }} />
+              {user && 
+              ((post.expand.post.canReply === "followers" && (user?.follows?.includes(post.expand.post.author) || post.expand.post.author === user?.id)) || post.expand.post.canReply === "everyone" || true) && (
+                <PostCard user={user} commentOn={{ id: post.expand.post.id, onFinish: onCommentPostet }} />
               )}
 
               <div class={style["comment-cont"]} style={{ overflow: "visible" }}>
                 <div class={style["sort-comments"]}>
-                  {post.post.replyStatus === "followers" && <p class="small dimmed m-0">Followers only</p>}
+                  {post.expand.post.canReply === "followers" && <p class="small dimmed m-0">Followers only</p>}
                   <div class={style["sort-comments-btn"]} onclick={() => setSortStatus(true)}>
                     <i class="fa-solid fa-arrow-down-wide-short"></i> Sort Comments
                   </div>
@@ -373,12 +406,12 @@ const PostedCard = ({ postId }) => {
                 </div>
                 {!!newComments.length && newComments.reverse().map((com) => <CommentCard data={com} user={user} />)}
                 {commentStatus === "success" &&
-                  (!comments.pages[0].length && !newComments.length ? (
+                  (!comments.pages[0].totalItems && !newComments.length ? (
                     <div style={{ textAlign: "center" }} class="accent">
                       This post received no comments yet
                     </div>
                   ) : (
-                    comments.pages.map((page) => page.map((com) => <CommentCard data={com} user={user} />))
+                    comments.pages.map((page) => page.items.map((com) => <CommentCard data={com} user={user} />))
                   ))}
                 <div ref={loadRef}>
                   {isFetchingNextPage || commentStatus === "loading" ? (
@@ -411,11 +444,11 @@ const PostedCard = ({ postId }) => {
             </div>
             <div class="card-body">
               {tags.map((t) => (
-                <Link href={"/explore/top/" + encode(t.hashtag)} class={style["hashtag-cont"]}>
+                <Link href={"/explore/top/" + encode(t.name)} class={style["hashtag-cont"]}>
                   <p class="m-0">
-                    <strong>{t.hashtag}</strong>
+                    <strong>{t.name}</strong>
                   </p>
-                  <p class="smaller m-0">{t.postCount} Posts</p>
+                  <p class="smaller m-0">{t.amount} Posts</p>
                 </Link>
               ))}
             </div>

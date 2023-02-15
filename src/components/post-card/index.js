@@ -14,8 +14,9 @@ import { route } from "preact-router";
 import useClickOutside from "use-click-outside";
 
 import convert from "image-file-resize";
-import {renameFile, getHeightAndWidthFromDataUrl, calculateAspectRatioFit} from "../other/files"
-
+import { renameFile, getHeightAndWidthFromDataUrl, calculateAspectRatioFit } from "../other/files";
+import pb from "../../_pocketbase/connect";
+import { addPost } from "../../_pocketbase/services/Posts";
 
 const PostCard = ({ user, commentOn }) => {
   const queryClient = useQueryClient();
@@ -23,12 +24,14 @@ const PostCard = ({ user, commentOn }) => {
   const [replySetting, setReplySetting] = useState("everyone");
   const [postInput, setPostInput] = useState("");
   const [uploadImg, setUploadImg] = useState([]);
-  const [imgFiles, setImgFiles] = useState([])
+  const [imgFiles, setImgFiles] = useState([]);
   const [uploadImgStatus, setUploadStatus] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const replyRef = useRef()
-  useClickOutside(replyRef, () => {if(replyStatus) setReplyStatus(false)});
+  const replyRef = useRef();
+  useClickOutside(replyRef, () => {
+    if (replyStatus) setReplyStatus(false);
+  });
 
   function postTextbox(e) {
     if (e.target.scrollHeight > e.target.clientHeight) e.target.style.height = e.target.scrollHeight + "px";
@@ -60,7 +63,7 @@ const PostCard = ({ user, commentOn }) => {
     });
     await Promise.all(files).then((res) => {
       let imgArr = [...uploadImg, ...res];
-      setImgFiles([...imgFiles, ...images])
+      setImgFiles([...imgFiles, ...images]);
       setUploadImg(imgArr.slice(0, 4));
       if (imgArr.slice(4).length > 0) {
         toastError("You can only upload 4 images");
@@ -91,17 +94,17 @@ const PostCard = ({ user, commentOn }) => {
       ev.currentTarget.classList.remove(style["img-fade"]);
       ev.preventDefault();
       let data = ev.dataTransfer.getData("text");
-      if(!["0", "1", "2", "3"].includes(data)) return;
-      let [img1, file1] = [uploadImg[data], imgFiles[data]]
+      if (!["0", "1", "2", "3"].includes(data)) return;
+      let [img1, file1] = [uploadImg[data], imgFiles[data]];
       let [img2, file2] = [uploadImg[index], imgFiles[index]];
       let imgArr = [...uploadImg];
       let filesArr = [...imgFiles];
       imgArr[index] = img1;
       imgArr[data] = img2;
-      filesArr[index] = file1
-      filesArr[data] = file2
+      filesArr[index] = file1;
+      filesArr[data] = file2;
       setUploadImg(imgArr);
-      setImgFiles(filesArr)
+      setImgFiles(filesArr);
     }
   }
   var enterTarget = null;
@@ -140,135 +143,88 @@ const PostCard = ({ user, commentOn }) => {
 
   function deleteImg(e, index) {
     e.stopPropagation();
-    let uplImg = [...uploadImg]
-    let imgFil = [...imgFiles]
-    uplImg.splice(index,1)
-    imgFil.splice(index,1)
+    let uplImg = [...uploadImg];
+    let imgFil = [...imgFiles];
+    uplImg.splice(index, 1);
+    imgFil.splice(index, 1);
     setUploadImg(uplImg);
-    setImgFiles(imgFil)
+    setImgFiles(imgFil);
   }
 
-  const uploadPictureOLD = async (file, upload) => {
-    setUploadStatus("Uploading");
-    let cloudname = "dtc8u5oa0";
-    const fileForm = new FormData();
-    fileForm.append("file", file);
-    fileForm.append("upload_preset", "pk0uto3z");
-    fileForm.append("cloud_name", cloudname);
-    let imgUpload = await fetch(`https://api.cloudinary.com/v1_1/${cloudname}/image/upload`, {
-      method: "POST",
-      body: fileForm,
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.error) {
-          setUploadStatus("Error");
-          throw new Error("Error");
-          return "Error";
-        } else {
-          return data.url;
-        }
-      });
-    return imgUpload;
-  };
+  // const uploadPicture = async (file, folder, id, index) => {
+  //   setUploadStatus("Uploading");
+  //   const fileAsDataURL = window !== undefined && window.URL.createObjectURL(file);
+  //   const dimension = await getHeightAndWidthFromDataUrl(fileAsDataURL);
 
-  const uploadPicture = async (file, folder, override, id, index) => {
-    setUploadStatus("Uploading");
-    const fileAsDataURL = window !== undefined && window.URL.createObjectURL(file);
-    const dimension = await getHeightAndWidthFromDataUrl(fileAsDataURL);
+  //   let sizes = {
+  //     medium: calculateAspectRatioFit(dimension.width, dimension.height, 700),
+  //     small: calculateAspectRatioFit(dimension.width, dimension.height, 350),
+  //   };
 
-    let sizes = {
-      medium: calculateAspectRatioFit(dimension.width, dimension.height, 700),
-      small: calculateAspectRatioFit(dimension.width, dimension.height, 350),
-    };
+  //   let images = []
 
-    let images = {
-      original: renameFile(file, folder + "-" + id + "-" + index + "." + file.type.split("/")[1]),
-    };
-    await convert({
-      file: renameFile(file, folder + "-" + id + "-" + index + "-medium." + file.type.split("/")[1]),
-      width: sizes.medium.width,
-      height: sizes.medium.height,
-      type: file.type.split("/")[1],
-    })
-      .then((resp) => {
-        images.medium = resp;
-      })
-      .catch((error) => {
-        throw error;
-      });
-    await convert({
-      file: renameFile(file, folder + "-" + id + "-" + index + "-small." + file.type.split("/")[1]),
-      width: sizes.small.width,
-      height: sizes.small.height,
-      type: file.type.split("/")[1],
-    })
-      .then((resp) => {
-        images.small = resp;
-      })
-      .catch((error) => {
-        console.log(file.type.split("/")[1], error);
-        throw error;
-      });
-    return await Promise.all([
-      Backendless.Files.upload(images.original, folder, override),
-      images.medium.size < images.original.size ? Backendless.Files.upload(images.medium, folder, override) : null,
-      (images.small.size < images.medium.size && images.small.size < images.original.size) ? Backendless.Files.upload(images.small, folder, override) : null,
-    ])
-      .then((values) => {
-        return {
-          original: values[0].fileURL,
-          medium: values[1]?.fileURL || values[0]?.fileURL,
-          small: values[2]?.fileURL || values[1]?.fileURL || values[0]?.fileURL,
-        };
-      })
-      .catch((err) => {
-        setUploadStatus("Error");
-        throw err;
-      });
-  };
+  //   images.push(renameFile(file, folder + "-" + id + "-" + index + "." + file.type.split("/")[1]));
+  //   await convert({
+  //     file: renameFile(file, folder + "-" + id + "-" + index + "-medium." + file.type.split("/")[1]),
+  //     width: sizes.medium.width,
+  //     height: sizes.medium.height,
+  //     type: file.type.split("/")[1],
+  //   })
+  //     .then((resp) => {
+  //       images.push(resp);
+  //     })
+  //     .catch((error) => {
+  //       throw error;
+  //     });
+  //   await convert({
+  //     file: renameFile(file, folder + "-" + id + "-" + index + "-small." + file.type.split("/")[1]),
+  //     width: sizes.small.width,
+  //     height: sizes.small.height,
+  //     type: file.type.split("/")[1],
+  //   })
+  //     .then((resp) => {
+  //       images.push(resp);
+  //     })
+  //     .catch((error) => {
+  //       console.log(file.type.split("/")[1], error);
+  //       throw error;
+  //     });
+  //   return images
+  // };
 
   const sendPost = async (e) => {
     e.preventDefault();
     setLoading(true);
-    const promises = [];
-    const randomId = Date.now() + "" + Math.floor(Math.random() * 100000)
-    imgFiles.forEach((img, index) => promises.push(uploadPicture(img, "postImages",false, randomId, index)));
-    Promise.all(promises).then((values) => {
-      setUploadStatus("");
-      let newPost = {
-        text: postInput,
-        images: [...values],
-        reply: replySetting,
-      };
-      if (commentOn) {
-        Backendless.APIServices.Posts.addPostComment(commentOn.feedId, commentOn.objectId, newPost)
-          .then((res) => {
-            setLoading(false);
-            setPostInput("");
-            setUploadImg([]);
-            toastSuccess("Comment successful posted")
-            commentOn.onFinish(res)
-          })
-          .catch((err) => {
-            console.log(err);
-            setLoading(false);
-          });
-      } else {
-        Backendless.APIServices.Posts.addPost(newPost)
-          .then((res) => {
-            setLoading(false);
-            setPostInput("");
-            setUploadImg([]);
-            toastSuccess("Post successful posted");
-            route("/post/" + res.objectId);
-          })
-          .catch((err) => {
-            console.log(err);
-            setLoading(false);
-          });
-      }
-    });
+    const images = [];
+    const randomId = Date.now() + "" + Math.floor(Math.random() * 100000);
+    // imgFiles.forEach((img, index) => images.push(uploadPicture(img, "postImages",false, randomId, index)));
+    setUploadStatus("");
+    let newPost = {
+      text: postInput,
+      images: [...imgFiles],
+      reply: replySetting,
+    };
+    if (commentOn) {
+      newPost.comment = commentOn.id;
+    }
+    addPost(newPost)
+      .then((res) => {
+        setLoading(false);
+        setPostInput("");
+        setUploadImg([]);
+        if (commentOn) {
+          toastSuccess("Comment successfully posts")
+          commentOn.onFinish(res)
+        } else {
+        toastSuccess("Post successfully posted");
+        route("/post/" + res.id);
+        }
+      })
+      .catch((err) => {
+        console.log(err);
+        toastError(err.message);
+        setLoading(false);
+      });
   };
 
   return (
@@ -284,9 +240,11 @@ const PostCard = ({ user, commentOn }) => {
           {postInput && (
             <div class={style["comment-header"]}>
               <progress class={style["post-value-progress"]} value={postInput.length} max="250"></progress>
-              <p class="accent">{postInput.length} <span class={style["comment-small"]}>/ 250</span></p>
+              <p class="accent">
+                {postInput.length} <span class={style["comment-small"]}>/ 250</span>
+              </p>
             </div>
-            )}
+          )}
         </div>
       ) : (
         <div>
@@ -299,7 +257,7 @@ const PostCard = ({ user, commentOn }) => {
       )}
       <div>
         <form onSubmit={sendPost} class={style["post-card-body"]}>
-          <img class={style["post-pp"]} src={user?.profilePicture?.small || ppPlaceholder} />
+          <img class={style["post-pp"]} src={user?.avatar ? pb.getFileUrl(user, user.avatar, { thumb: "250x0" }) : ppPlaceholder} />
           <div class={style["post-card-body-main"]}>
             <textarea
               id="post-input"
@@ -348,7 +306,7 @@ const PostCard = ({ user, commentOn }) => {
                   onInput={(e) => previewImage(e.target.files)}
                 />
                 <label for="post-img-id" class={"pointer " + style["img-label"]}>
-                  <i class="fa-solid fa-images"></i>
+                  <div><i class="fa-solid fa-images"></i></div>
                 </label>
                 <div class={style["post-reply"]}>
                   {replySetting === "everyone" ? (

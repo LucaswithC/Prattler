@@ -17,6 +17,9 @@ import { route } from "preact-router";
 
 import { encode, decode } from "url-encode-decode";
 import Footer from "../../components/footer";
+import pb from "../../_pocketbase/connect";
+import { getAll } from "../../_pocketbase/services/Posts";
+import { getAllUsers } from "../../_pocketbase/services/Users";
 
 // Note: `user` comes from the URL, courtesy of our router
 const Profile = ({ searchTerm, filter }) => {
@@ -32,8 +35,7 @@ const Profile = ({ searchTerm, filter }) => {
   } = useQuery(
     "currentUser",
     async () => {
-      console.log("LOL");
-      return Backendless.UserService.getCurrentUser();
+      return pb.authStore?.model
     },
     {
       retry: false,
@@ -49,24 +51,28 @@ const Profile = ({ searchTerm, filter }) => {
     hasNextPage,
   } = useInfiniteQuery(
     [filter + "-Explore", decode(searchTerm)],
-    async ({ pageParam = 0 }) => {
-      let filterQuery = { pageSize: 20, pageOffset: pageParam };
+    async ({ pageParam = 1 }) => {
+      let filterQuery = {};
       if (filter === "people") {
-        filterQuery.sortBy = "Count(followers) DESC";
-        if (searchTerm) filterQuery.whereClause = [`name LIKE '%${searchTerm}%' or username LIKE '%${searchTerm}%'`];
-        return Backendless.APIServices.Users.getAllUsers(filterQuery);
+        filterQuery.sort = "-followers:length";
+        if (searchTerm) filterQuery.filter = [`name ~ "${searchTerm}" || username ~ "${searchTerm}"`];
+        return getAllUsers(filterQuery, 20, pageParam)
       }
-      filterQuery.whereClause = ["type in ('Post', 'Comment')"];
-      if (searchTerm) filterQuery.whereClause.push(`post.text LIKE '%${searchTerm}%'`);
-      if (filter === "top") filterQuery.sortBy = "post.likes DESC";
-      else if (filter === "latest") filterQuery.sortBy = "created DESC";
-      else if (filter === "media") filterQuery.whereClause.push("post.images->'$[0]' != null");
-      return Backendless.APIServices.Posts.getAll(filterQuery);
+      filterQuery.filter = ['(type = "post" || type = "comment")'];
+      if (searchTerm) filterQuery.filter.push(`post.text ~ "${searchTerm}"`);
+      if (filter === "top") filterQuery.sort = "-post.totalLikes";
+      else if (filter === "latest") filterQuery.sort = "-created";
+      else if (filter === "media") filterQuery.filter.push("post.images:length > 0");
+      return getAll(filterQuery, 20, pageParam);
     },
     {
-      getNextPageParam: (lastPage, pages) => (lastPage.length === 20 ? pages.length * 20 : undefined),
+      getNextPageParam: (lastPage, pages) => (lastPage.totalPages > pages.length ? pages.length + 1 : undefined),
     }
   );
+
+  useEffect(() => {
+    console.log(expData)
+  }, [expData])
 
   const searchSuggRef = useRef();
 
@@ -75,13 +81,12 @@ const Profile = ({ searchTerm, filter }) => {
   });
 
   useEffect(async () => {
-    if (userError?.code === 3064 || expError?.code === 3064) {
-      Backendless.UserService.logout().then(function () {
-        queryClient.invalidateQueries("currentUser");
-        location.reload();
-      });
+    if (user && !pb.authStore.isValid) {
+      pb.authStore.clear()
+      queryClient.invalidateQueries("currentUser");
+      location.reload();
     }
-  }, [userStatus, expStatus]);
+  }, [user]);
 
   useEffect(() => {
     setSearchInput(decode(searchTerm));
@@ -194,12 +199,12 @@ const Profile = ({ searchTerm, filter }) => {
             <button type="submit">Search</button>
           </form>
           {expStatus === "success" &&
-            (expData.pages[0].length === 0 ? (
+            (expData.pages[0].totalItems === 0 ? (
               <p class="loader-outer accent">{filter === "people" ? "No accounts found" : "No posts found"}</p>
             ) : filter === "people" ? (
-              expData.pages.map((page) => page.map((person) => <ExpPeople user={person} curUser={user} />))
+              expData.pages.map((page) => page.items.map((person) => <ExpPeople user={person} curUser={user} />))
             ) : (
-              expData.pages.map((page) => page.map((post) => <PostedCard data={post} user={user} />))
+              expData.pages.map((page) => page.items.map((post) => <PostedCard data={post} user={user} />))
             ))}
           <div ref={loadRef}>
             {isFetchingNextPage || expStatus === "loading" ? (

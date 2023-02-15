@@ -8,9 +8,10 @@ import { Link } from "preact-router";
 import createDate from "../other/date";
 
 import ppPlaceholder from "../../assets/icons/pp_placeholder.svg";
+import pb from "../../_pocketbase/connect";
+import { getMessages, getSingleMessage, postMessage } from "../../_pocketbase/services/Messages";
 
-
-const messagesRt = Backendless.Data.of("Messages").rt();
+let unsubFunc = false;
 
 const Chatroom = ({ selectedChannel, channelId, setSidebarOpen }) => {
   const queryClient = useQueryClient();
@@ -23,7 +24,7 @@ const Chatroom = ({ selectedChannel, channelId, setSidebarOpen }) => {
     data: user,
     error: userError,
   } = useQuery("currentUser", async () => {
-    return Backendless.UserService.getCurrentUser();
+    return pb.authStore.model;
   });
   const {
     status: messageStatus,
@@ -36,38 +37,38 @@ const Chatroom = ({ selectedChannel, channelId, setSidebarOpen }) => {
   } = useInfiniteQuery(
     "messages-" + channelId,
     async ({ pageParam = 0 }) => {
-      let msgs = await Backendless.APIServices.Messages.getMessages(channelId, { pageOffset: pageParam });
-      return msgs.reverse();
+      let msgs = await getMessages(channelId, 20, pageParam);
+      console.log(msgs);
+      return msgs.items.reverse();
     },
     {
       getNextPageParam: undefined,
-      getPreviousPageParam: (firstPage, pages) => (firstPage.length >= 20 ? pages.length * 20 : undefined),
-    }, {
-      enable: false
+      getPreviousPageParam: (firstPage, pages) => (firstPage.length >= 20 ? pages.length + 1 : undefined),
+    },
+    {
+      enable: false,
     }
   );
   const [bottomScroll, setBottomScroll] = useState(0);
   const [msgUpdate, setMsgUpdate] = useState(Math.floor(Math.random() * 10000));
 
   useEffect(async () => {
-    if(userError?.code === 3064) {
-      Backendless.UserService.logout()
-      .then(function () {
-        queryClient.invalidateQueries("currentUser")
-        location.reload();
-      })
+    if (user && !pb.authStore.isValid) {
+      pb.authStore.clear();
+      queryClient.invalidateQueries("currentUser");
+      location.reload();
     }
-  }, [userStatus])
+  }, [userStatus]);
 
   useEffect(async () => {
-    if(userError?.code === 3064 || messageError?.code === 3064) {
-      Backendless.UserService.logout()
-      .then(function () {
-        queryClient.invalidateQueries("currentUser")
-        location.reload();
-      })
+    if (userError?.code === 3064 || messageError?.code === 3064) {
+      // Backendless.UserService.logout()
+      // .then(function () {
+      //   queryClient.invalidateQueries("currentUser")
+      //   location.reload();
+      // })
     }
-  }, [userStatus, messageStatus])
+  }, [userStatus, messageStatus]);
 
   useEffect(() => {
     console.log("fetching");
@@ -82,22 +83,37 @@ const Chatroom = ({ selectedChannel, channelId, setSidebarOpen }) => {
     contRef(chatRef.current);
   }, []);
 
-  useEffect(() => {
-    messagesRt.removeCreateListeners();
-
-    const onObjectCreate = async (realMessage) => {
-      let newMsg = await Backendless.APIServices.Messages.getSingleMessage(realMessage.objectId);
-      queryClient.setQueryData("messages-" + channelId, (old) => {
+  const onObjectCreate = async (e) => {
+    let newMsg = await getSingleMessage(channelId, e.record.updated);
+    queryClient.setQueryData("messages-" + channelId, (old) => {
+      let pagenr = old.pages.length - 1;
+      if (old.pages[old.pages.length - 1][old.pages[pagenr].length - 1]?.id !== newMsg.id) {
         old.pages[old.pages.length - 1].push(newMsg);
-        return { ...old };
-      });
-      setMsgUpdate(Math.floor(Math.random() * 10000));
+      }
+      return { ...old };
+    });
+    setMsgUpdate(Math.floor(Math.random() * 10000));
+  };
+
+  // useEffect(async () => {
+  //   pb.collection("channels").unsubscribe()
+  //   unsubFunc = await pb.collection("channels").subscribe(channelId, onObjectCreate);
+  //   scrollRef.current.scrollIntoView();
+  //   return () => {
+  //     if (unsubFunc) {
+  //       pb.collection("channels").unsubscribe();
+  //     }
+  //   };
+  // });
+
+  useEffect(async () => {
+    await pb.collection("channels").unsubscribe()
+    unsubFunc = await pb.collection("channels").subscribe(channelId, onObjectCreate);
+    return async () => {
+      if (unsubFunc) {
+        await pb.collection("channels").unsubscribe();
+      }
     };
-    const onError = (error) => console.log("An error has occurred - ", error);
-
-    messagesRt.addCreateListener(`channel = '${channelId}'`, onObjectCreate, onError);
-
-    scrollRef.current.scrollIntoView();
   }, [channelId]);
 
   useEffect(() => {
@@ -105,14 +121,14 @@ const Chatroom = ({ selectedChannel, channelId, setSidebarOpen }) => {
       if (bottomScroll <= 50) {
         scrollRef.current.scrollIntoView({ behavior: "smooth" });
       } else {
-        topScrollRef.current.scrollIntoView(true)
+        topScrollRef.current.scrollIntoView(true);
         setTimeout(() => {
-        chatRef.current.scrollTo({
-          top: chatRef.current.scrollTop - 100,
-          left: 0,
-          behavior: 'smooth'
-        });
-      }, 100)
+          chatRef.current.scrollTo({
+            top: chatRef.current.scrollTop - 100,
+            left: 0,
+            behavior: "smooth",
+          });
+        }, 100);
       }
     }
   }, [msgUpdate]);
@@ -121,7 +137,7 @@ const Chatroom = ({ selectedChannel, channelId, setSidebarOpen }) => {
     <div class={style["chatroom"]}>
       <div class={style["chat-header"]}>
         <div class={style["mobile-chat-menu"]} onclick={() => setSidebarOpen(true)}>
-        <i class="fa-solid fa-bars"></i>
+          <i class="fa-solid fa-bars"></i>
         </div>
         <h4>{selectedChannel.name}</h4>
         <div class={style["chat-loading"] + " " + ((isFetchingPreviousPage || messageStatus === "loading") && style["active"])}>
@@ -136,7 +152,7 @@ const Chatroom = ({ selectedChannel, channelId, setSidebarOpen }) => {
           setBottomScroll(e.target.scrollHeight - (e.target.scrollTop + height));
         }}
       >
-        <div class={style["chat-body"]}>          
+        <div class={style["chat-body"]}>
           {!isFetchingPreviousPage && messageStatus !== "loading" && hasPreviousPage && (
             <button class="small third mx-auto" onClick={fetchPreviousPage}>
               Load more
@@ -153,7 +169,7 @@ const Chatroom = ({ selectedChannel, channelId, setSidebarOpen }) => {
                     <Message
                       data={d}
                       index={i}
-                      self={d.author === user.objectId}
+                      self={d.author === user.id}
                       prevDate={messages.pages?.[ip]?.[i - 1]?.created || messages.pages?.[ip - 1]?.[messages.pages?.[ip - 1].length - 1]?.created || null}
                     />
                   ))}
@@ -181,17 +197,24 @@ const Message = ({ data, index, self, prevDate }) => {
       {(prevDate === null || new Date(data.created).getDate() !== new Date(prevDate).getDate()) && (
         <div class={style.divider}>
           <span class={style["divider-text"]}>
-            {months[new Date(data.created).getMonth()] + " " + new Date(data.created).getDate() + " " + new Date(data.created).getFullYear()}
+            {new Date(data.created).getDate() + ". " + months[new Date(data.created).getMonth()] + " " + new Date(data.created).getFullYear()}
           </span>
         </div>
       )}
       <div class={style.message + " " + (self && style.self)}>
-        <Link href={"/profile/" + data.username} class={style["message-img"]} ><img src={data?.profilePicture?.small || ppPlaceholder} /></Link>
+        <Link href={"/profile/" + data.author} class={style["message-img"]}>
+          <img src={data.expand.author.avatar ? pb.getFileUrl(data.expand.author, data.expand.author.avatar, { thumb: "60x0" }) : ppPlaceholder} />
+        </Link>
         <div class={style["message-body"]}>
           <div class={style["message-author"] + " dimmed small"}>
-            {!self && <strong><Link href={"/profile/" + data.username} >{data?.name || data?.username}</Link></strong>} <span class="smaller">{createDate(data.created - 3000)}</span>
+            {!self && (
+              <strong>
+                <Link href={"/profile/" + data.author}>{data?.expand.author?.name || data?.expand.author.username}</Link>
+              </strong>
+            )}{" "}
+            <span class="smaller">{createDate(new Date(data.created).getTime() - 3000)}</span>
           </div>
-          <div class={style["message-text"]}>{data.message}</div>
+          <div class={style["message-text"]}>{data.text}</div>
         </div>
       </div>
     </>
@@ -218,7 +241,7 @@ const NewMessage = ({ channelId }) => {
     e.preventDefault();
     let msg = e.target.elements.message.value;
     setChatInput("");
-    await Backendless.APIServices.Messages.postMessage(msg, channelId);
+    await postMessage(msg, channelId);
   }
 
   return (
@@ -234,13 +257,15 @@ const NewMessage = ({ channelId }) => {
             onInput={chatTextbox}
             rows="1"
           ></textarea>
-          {chatInput.length <= 0 ? 
-          <button disabled={true} class={"small disabled " + style["message-btn"]}>
-            <i class="fa-solid fa-location-arrow"></i>
-          </button> : 
-          <button type="submit" class={"small " + style["message-btn"]}>
-            <i class="fa-solid fa-location-arrow"></i>
-          </button>}
+          {chatInput.length <= 0 ? (
+            <button disabled={true} class={"small disabled " + style["message-btn"]}>
+              <i class="fa-solid fa-location-arrow"></i>
+            </button>
+          ) : (
+            <button type="submit" class={"small " + style["message-btn"]}>
+              <i class="fa-solid fa-location-arrow"></i>
+            </button>
+          )}
         </div>
       </div>
     </form>

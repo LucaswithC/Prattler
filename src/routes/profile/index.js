@@ -18,6 +18,11 @@ import toastInfo from "../../components/toasts/info";
 import Loader from "../../components/loader/loader";
 import Footer from "../../components/footer";
 
+import pb from "../../_pocketbase/connect";
+import { getAll } from "../../_pocketbase/services/Posts";
+import { followUser, getAllUsers, unfollowUser } from "../../_pocketbase/services/Users";
+import toastError from "../../components/toasts/error";
+
 // Note: `user` comes from the URL, courtesy of our router
 const Profile = ({ userFilter, filter }) => {
   const queryClient = useQueryClient();
@@ -35,7 +40,7 @@ const Profile = ({ userFilter, filter }) => {
   } = useQuery(
     "currentUser",
     async () => {
-      return Backendless.UserService.getCurrentUser();
+      return pb.authStore?.model;
     },
     {
       retry: false,
@@ -49,9 +54,10 @@ const Profile = ({ userFilter, filter }) => {
   } = useQuery(userFilter + "-User", async () => {
     let res;
     if (userFilter === "me") {
-      res = await Backendless.APIServices.Users.getCurrentUser();
+      res = pb.authStore.model;
     } else {
-      res = await Backendless.APIServices.Users.getSingleUser(userFilter);
+      res = await pb.collection("users").getOne(userFilter);
+      console.log(res);
     }
     setUser(res);
     return res;
@@ -65,29 +71,28 @@ const Profile = ({ userFilter, filter }) => {
     hasNextPage,
   } = useInfiniteQuery(
     [userFilter + "-Posts-" + (filter || "all"), user],
-    async ({ pageParam = 0 }) => {
-      let filterQuery = { pageSize: 20, pageOffset: pageParam };
-      filterQuery.whereClause = [`ownerId='${user.objectId}'`];
-      if (!filter) filterQuery.whereClause.push("type in ('Post', 'Repost')");
-      else if (filter === "replies") filterQuery.whereClause.push("type in ('Post', 'Comment', 'Repost')");
-      else if (filter === "media") filterQuery.whereClause.push(`post.images->'$[0]' != null and type = 'Post'`);
-      else if (filter === "likes") filterQuery.whereClause.push("type = 'Like'");
-      return Backendless.APIServices.Posts.getAll(filterQuery);
+    async ({ pageParam = 1 }) => {
+      let filterQuery = {};
+      filterQuery.filter = [`author = "${user.id}"`];
+      if (!filter) filterQuery.filter.push('(type = "post" || type = "repost")');
+      else if (filter === "replies") filterQuery.filter.push('(type = "post" || type = "repost" || type = "comment")');
+      else if (filter === "media") filterQuery.filter.push(`(type = "post" && post.images:length > 0)`);
+      else if (filter === "likes") filterQuery.filter.push('type = "like"');
+      filterQuery.sort = "-created";
+      return getAll(filterQuery, 20, pageParam);
     },
     {
-      getNextPageParam: (lastPage, pages) => (lastPage.length === 20 ? pages.length * 20 : undefined),
+      getNextPageParam: (lastPage, pages) =>  (lastPage.totalPages > pages.length ? pages.length + 1 : undefined),
       enabled: !!user,
     }
   );
 
   useEffect(async () => {
-    if (curUserError?.code === 3064 || userError?.code === 3064 || postsError?.code === 3064) {
-      Backendless.UserService.logout().then(function () {
-        queryClient.invalidateQueries("currentUser");
-        location.reload();
-      });
+    if (curUser && !pb.authStore.isValid) {
+      pb.authStore.clear();
+      location.reload();
     }
-  }, [curUserStatus, userStatus, postsStatus]);
+  }, [curUser]);
 
   useEffect(() => {
     if (userStatus === "success") {
@@ -139,22 +144,9 @@ const Profile = ({ userFilter, filter }) => {
   }
 
   function logout() {
-    Backendless.UserService.logout()
-      .then(function () {
-        queryClient.invalidateQueries("currentUser");
-        route("/explore/top");
-      })
-      .catch(function (error) {
-        console.log(error);
-      });
-  }
-
-  function reload() {
-    Backendless.UserService.getCurrentUser()
-      .then(function (currentUser) {
-        console.log(currentUser);
-      })
-      .catch(function (error) {});
+    pb.authStore.clear();
+    queryClient.invalidateQueries("currentUser");
+    route("/explore/top");
   }
 
   async function follow() {
@@ -163,26 +155,37 @@ const Profile = ({ userFilter, filter }) => {
       route("/signup");
       return;
     }
-    let newUser = { ...user };
-    newUser.followers = user.followed ? user.followers - 1 : user.followers + 1;
-    newUser.followed = !user.followed;
-    setUser(newUser);
-    if (!user.followed) {
-      await Backendless.APIServices.Users.followUser(user.objectId).catch((err) => {
-        newUser = { ...user };
-        newUser.followed = !user.followed;
-        newUser.followers = user.followers - 1;
-        setUser(newUser);
-        toastSuccess(err);
-      });
+    // let newUser = { ...user };
+    // newUser.followers = user.followed ? user.followers - 1 : user.followers + 1;
+    // newUser.followed = !user.followed;
+    // setUser(newUser);
+    if (!curUser.follows.includes(user.id)) {
+      followUser(user.id)
+        .then((res) => {
+          queryClient.invalidateQueries(userFilter + "-User");
+          queryClient.invalidateQueries("currentUser");
+        })
+        .catch((err) => {
+          // newUser = { ...user };
+          // newUser.followed = !user.followed;
+          // newUser.followers = user.followers - 1;
+          // setUser(newUser);
+          toastError(err);
+        });
     } else {
-      await Backendless.APIServices.Users.unfollowUser(user.objectId).catch((err) => {
-        newUser = { ...user };
-        newUser.followed = !user.followed;
-        newUser.followers = user.followers + 1;
-        setUser(newUser);
-        toastSuccess(err);
-      });
+      unfollowUser(user.id)
+        .then((res) => {
+          queryClient.invalidateQueries(userFilter + "-User");
+          queryClient.invalidateQueries("currentUser");
+        })
+        .catch((err) => {
+          console.log(err);
+          // newUser = { ...user };
+          // newUser.followed = !user.followed;
+          // newUser.followers = user.followers + 1;
+          // setUser(newUser);
+          toastError(err);
+        });
     }
   }
 
@@ -198,29 +201,31 @@ const Profile = ({ userFilter, filter }) => {
                 </strong>
                 <i class={"fa-solid fa-xmark " + style["close-modal"]} onclick={closeModal}></i>
               </div>
-              {modalState && <FollowList type={modalType} userId={user.objectId} curUser={curUser} closeModal={closeModal} />}
+              {modalState && <FollowList type={modalType} userId={user.id} curUser={curUser} closeModal={closeModal} userFilter={userFilter} />}
             </div>
           </div>
-          <img class={style["header-img"]} src={user?.banner?.original || bannerPlaceholder} />
+          <img class={style["header-img"]} src={user?.banner ? pb.getFileUrl(user, user.banner) : bannerPlaceholder} />
           <div class="container">
             <div class={style["profile-header"]}>
-              <img class={style["profile-picture"]} src={user?.profilePicture?.medium || ppPlaceholder} />
+              <img class={style["profile-picture"]} src={user?.avatar ? pb.getFileUrl(user, user.avatar) : ppPlaceholder} />
               <div class={style["profile-main"]}>
                 <div class={style["profile-name-info"]}>
                   <div>
-                    <h3>{user?.name || user.username}</h3><span class="smaller dimmed"> | </span>
+                    <h3>{user?.name || user.username}</h3>
+                    <span class="smaller dimmed"> | </span>
                     <span class="smaller m-0 pointer" onclick={() => openModal("follower")}>
-                      <strong>{user?.followers || 0}</strong> Followers
-                    </span><span class="smaller dimmed"> | </span>
+                      <strong>{user?.followers.length || 0}</strong> Followers
+                    </span>
+                    <span class="smaller dimmed"> | </span>
                     <span class="smaller m-0 pointer" onclick={() => openModal("following")}>
-                      <strong>{user?.following || 0}</strong> Following
+                      <strong>{user?.follows.length || 0}</strong> Following
                     </span>
                     <p class="smaller dimmed m-0">@{user.username}</p>
                   </div>
                 </div>
                 <p class={style["profile-bio"]}>
                   {userFilter === "me" ? (
-                    user.bio || (
+                    user.biography || (
                       <p class="m-0 dimmed">
                         <i>
                           You don't have a Biography yet!{" "}
@@ -231,12 +236,12 @@ const Profile = ({ userFilter, filter }) => {
                       </p>
                     )
                   ) : (
-                    <p>{user.bio}</p>
+                    <p>{user.biography}</p>
                   )}
                 </p>
               </div>
               <div class={style["profile-secondary"]}>
-                {user.objectId === curUser?.objectId ? (
+                {user.id === curUser?.id ? (
                   <div class={style["user-btns"]}>
                     <button class="sec" onclick={openEdit}>
                       <i class="fa-solid fa-pen"></i> Edit
@@ -245,7 +250,7 @@ const Profile = ({ userFilter, filter }) => {
                       Logout
                     </button>
                   </div>
-                ) : user.followed ? (
+                ) : curUser?.follows.includes(user.id) ? (
                   <button class={"sec " + style["follow-btn"]} onclick={follow}>
                     Unfollow
                   </button>
@@ -275,19 +280,19 @@ const Profile = ({ userFilter, filter }) => {
                 <Footer />
               </div>
               <div class={style.posts}>
-                {curUser?.objectId === user.objectId && (
+                {curUser?.id === user.id && (
                   <div class="mt-2">
                     {" "}
                     <PostCard user={curUser} />{" "}
                   </div>
                 )}
                 {postsStatus === "success" &&
-                  (postsData.pages[0].length === 0 ? (
+                  (postsData.pages[0].totalItems === 0 ? (
                     <p class="accent" style={{ textAlign: "center", fontWeight: "500" }}>
                       No Posts found
                     </p>
                   ) : (
-                    postsData.pages.map((page) => page.map((post) => <PostedCard data={post} user={curUser} />))
+                    postsData.pages.map((page) => page.items.map((post) => <PostedCard data={post} user={curUser} />))
                   ))}
                 <div ref={loadRef}>
                   {isFetchingNextPage || postsStatus === "loading" ? (
@@ -314,23 +319,25 @@ const Profile = ({ userFilter, filter }) => {
 
 export default Profile;
 
-const FollowList = ({ type, userId, curUser, closeModal }) => {
+const FollowList = ({ type, userId, curUser, closeModal, userFilter }) => {
   const {
     status: userStatus,
     data: userData,
     error: userError,
   } = useQuery(userId + type, async () => {
     if (type === "following") {
+      return getAllUsers({ filter: [`followers.id ?= "${userId}"`] });
       return Backendless.APIServices.Users.getAllUsers({ whereClause: [`followers in ('${userId}')`] });
     } else if (type === "follower") {
-      return Backendless.APIServices.Users.getAllUsers({ whereClause: [`following in ('${userId}')`] });
+      return getAllUsers({ filter: [`follows.id ?= "${userId}"`] });
+      // return Backendless.APIServices.Users.getAllUsers({ whereClause: [`following in ('${userId}')`] });
     }
   });
   return (
     <div class={style["modal-body"]}>
       {userStatus === "success" ? (
-        !!userData.length ? (
-          userData.map((user) => <UserFollow followUser={user} curUser={curUser} closeModal={closeModal} />)
+        !!userData.totalItems ? (
+          userData.items.map((user) => <UserFollow openUser={user} curUser={curUser} closeModal={closeModal} userFilter={userFilter} />)
         ) : (
           <p class="loader-outer accent">{type === "following" ? "This account follows no one" : "This account has no followers yet"}</p>
         )
@@ -341,8 +348,10 @@ const FollowList = ({ type, userId, curUser, closeModal }) => {
   );
 };
 
-const UserFollow = ({ followUser, curUser, closeModal }) => {
-  const [user, setUser] = useState(followUser);
+const UserFollow = ({ openUser, curUser, closeModal, userFilter }) => {
+  const queryClient = useQueryClient();
+  const [user, setUser] = useState(openUser);
+  const [isFollowing, setFollowing] = useState(curUser.follows.includes(openUser.id));
 
   async function follow(e) {
     e.stopPropagation();
@@ -352,49 +361,67 @@ const UserFollow = ({ followUser, curUser, closeModal }) => {
       route("/signup");
       return;
     }
-    let newUser = { ...user };
-    newUser.followers = user.followed ? user.followers - 1 : user.followers + 1;
-    newUser.followed = !user.followed;
-    setUser(newUser);
-    if (!user.followed) {
-      await Backendless.APIServices.Users.followUser(user.objectId).catch((err) => {
-        newUser = { ...user };
-        newUser.followed = !user.followed;
-        newUser.followers = user.followers - 1;
-        setUser(newUser);
-        toastSuccess(err);
-      });
+    // let newUser = { ...user };
+    // newUser.followers = user.followed ? user.followers - 1 : user.followers + 1;
+    // newUser.followed = !user.followed;
+    // setUser(newUser);
+    if (!isFollowing) {
+      followUser(openUser.id)
+        .then((res) => {
+          queryClient.invalidateQueries(userFilter + "-User");
+          queryClient.invalidateQueries("currentUser")
+          let newUser = { ...user };
+          newUser.followers.push(curUser.id);
+          setUser(newUser);
+          setFollowing(true);
+        })
+        .catch((err) => {
+          // newUser = { ...user };
+          // newUser.followed = !user.followed;
+          // newUser.followers = user.followers - 1;
+          // setUser(newUser);
+          toastError(err);
+        });
     } else {
-      await Backendless.APIServices.Users.unfollowUser(user.objectId).catch((err) => {
-        newUser = { ...user };
-        newUser.followed = !user.followed;
-        newUser.followers = user.followers + 1;
-        setUser(newUser);
-        toastSuccess(err);
-      });
+      unfollowUser(openUser.id)
+        .then((res) => {
+          queryClient.invalidateQueries(userFilter + "-User");
+          queryClient.invalidateQueries("currentUser")
+          let newUser = { ...user };
+          newUser.followers = newUser.followers.filter((u) => u !== curUser.id);
+          setUser(newUser);
+          setFollowing(false);
+        })
+        .catch((err) => {
+          // newUser = { ...user };
+          // newUser.followed = !user.followed;
+          // newUser.followers = user.followers + 1;
+          // setUser(newUser);
+          toastError(err);
+        });
     }
   }
 
   return (
-    <Link href={"/profile/" + followUser.username} class={style["follower-item"]}>
+    <Link href={"/profile/" + openUser.id} class={style["follower-item"]}>
       <div class={style["follower-item-main"]}>
         <div onClick={closeModal}>
           <div class={style["follower-header"]}>
-            <img src={user.profilePicture?.small} />
+            <img src={openUser?.avatar ? pb.getFileUrl(openUser, openUser.avatar, { thumb: "60x0" }) : ppPlaceholder} />
             <div>
               <p class="m-0">
-                <strong>{user.name}</strong>
-                <span class="m-0 smaller dimmed"> | {user.followers} Followers</span>
+                <strong>{openUser.name || openUser.username}</strong>
+                <span class="m-0 smaller dimmed"> | {user.followers.length} Followers</span>
               </p>
-              <p class="dimmed m-0 small">{user.bio}</p>
+              <p class="dimmed m-0 small">{openUser.biography}</p>
             </div>
           </div>
         </div>
       </div>
       <div>
-        {followUser.objectId !== curUser?.objectId && (
-          <button class={user.followed && "sec"} onClick={follow}>
-            {!user.followed && <i class="fa-solid fa-user-plus"></i>} {user.followed ? "Unfollow" : "Follow"}
+        {openUser.id !== curUser?.id && (
+          <button class={isFollowing && "sec"} onClick={follow}>
+            {!isFollowing && <i class="fa-solid fa-user-plus"></i>} {isFollowing ? "Unfollow" : "Follow"}
           </button>
         )}
       </div>

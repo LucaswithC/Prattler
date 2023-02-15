@@ -10,6 +10,7 @@ import useClickOutside from "use-click-outside";
 import AppLogo from "../../assets/icons/AppLogo.svg";
 import AppLogoSmall from "../../assets/icons/App-icon.svg";
 import ppPlaceholder from "../../assets/icons/pp_placeholder.svg";
+import pb from "../../_pocketbase/connect";
 
 const { encode, decode } = require("url-encode-decode");
 
@@ -20,7 +21,9 @@ const Nav = ({screen}) => {
     data: user,
     error: userError,
   } = useQuery("currentUser", async () => {
-    return Backendless.UserService.getCurrentUser();
+    return pb.authStore?.model
+  }, {
+    retry: false
   });
 
   const [recentSearchesOpen, setRecentSearchesOpen] = useState(false);
@@ -137,7 +140,7 @@ const Nav = ({screen}) => {
               }
             </Match>
             <Link href="/profile/me" activeClassName={style["account-active"]} class={style.account + " " + style["item-desktop"]}>
-              <img src={user?.profilePicture?.small || ppPlaceholder} height="40" width="40" style={{ objectFit: "cover", borderRadius: "50%" }} />
+              <img src={user?.avatar ? pb.getFileUrl(user, user.avatar, {thumb: "60x0"}) : ppPlaceholder} height="40" width="40" style={{ objectFit: "cover", borderRadius: "50%" }} />
             </Link>
           </div>
         ) : (
@@ -170,7 +173,7 @@ const Nav = ({screen}) => {
     </Match>
     {user && (
       <Link activeClassName={style.active} class={style["nav-item"]} href="/profile/me">
-        <img src={user.profilePicture?.small || ppPlaceholder} />
+        <img src={user?.avatar ? pb.getFileUrl(user, user.avatar, {thumb: "60x0"}) : ppPlaceholder} />
         Account
       </Link>
     )}

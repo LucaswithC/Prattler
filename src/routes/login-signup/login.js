@@ -11,6 +11,8 @@ import GoogleMark from "../../assets/brands/Google-Mark.png";
 import GitHubMark from "../../assets/brands/GitHub-Mark.png";
 import Loader from "../../components/loader/loader";
 
+import pb from "../../_pocketbase/connect";
+
 const Login = () => {
   const queryClient = useQueryClient();
   const {
@@ -18,7 +20,7 @@ const Login = () => {
     data: user,
     error: userError,
   } = useQuery("currentUser", async () => {
-    return Backendless.UserService.getCurrentUser()
+    return pb.authStore?.model
   }, {
     retry: false
   });
@@ -38,12 +40,10 @@ const Login = () => {
   }, [user]);
 
   useEffect(async () => {
-    if(userError?.code === 3064) {
-      Backendless.UserService.logout()
-      .then(function () {
-        queryClient.invalidateQueries("currentUser")
-        location.reload();
-      })
+    if(user && !user?.isValid) {
+      pb.authStore.clear()
+      queryClient.invalidateQueries("currentUser")
+      location.reload();
     }
   }, [userStatus])
 
@@ -52,14 +52,14 @@ const Login = () => {
     setLoading(true);
     setGeneralError("");
 
-    Backendless.UserService.login(email, pw, true)
-      .then((user) => {
-        queryClient.invalidateQueries("currentUser");
-      })
-      .catch((error) => {
-        setGeneralError(error.message);
-        setLoading(false);
-      });
+    pb.collection('users').authWithPassword(email, pw).then((user) => {
+      queryClient.invalidateQueries("currentUser")
+    }).catch((error) => {
+      setGeneralError(
+        error?.data?.data?.email?.message || error?.data?.data?.password?.message || error?.data?.data?.username?.message || error?.message || "Something went wrong"
+      );
+      setLoading(false)
+    });
   }
 
   return (
@@ -131,18 +131,14 @@ const ForgotPassword = () => {
     e.preventDefault()
     setLoading(true)
     let email = e.target.elements.email.value;
-    Backendless.APIServices.Users.resetPassword(email)
-    .then(res => {
+
+    pb.collection('users').requestPasswordReset(email).then(res => {
       setLoading(false)
-      setMessage([true, "Please check your Inbox for your new Password"])
-    }).catch(err => {
+      setMessage([true, "Please check your inbox to reset your password"])
+    }).catch(error => {
       setLoading(false)
-      if(err.code === 3020) {
-        setMessage([false, "User not found"])
-      } else {
-        setMessage([false, "Something went wrong"])
-      }
-    })
+      setMessage(error.message)
+    });
   }
 
   return (

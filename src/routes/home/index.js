@@ -14,6 +14,10 @@ import ppPlaceholder from "../../assets/icons/pp_placeholder.svg";
 import bannerPlaceholder from "../../assets/icons/banner_placeholder.svg";
 import Loader from "../../components/loader/loader";
 import Footer from "../../components/footer";
+import pb from "../../_pocketbase/connect";
+import { getAll, getFollowingPosts, trendingHashtags } from "../../_pocketbase/services/Posts";
+import { followUser, getSuggestedUsers, unfollowUser } from "../../_pocketbase/services/Users";
+import toastError from "../../components/toasts/error";
 
 const { encode, decode } = require("url-encode-decode");
 
@@ -24,11 +28,15 @@ const Home = () => {
     status: userStatus,
     data: user,
     error: userError,
-  } = useQuery("currentUser", async () => {
-    return Backendless.UserService.getCurrentUser()
-  }, {
-    retry: false
-  });
+  } = useQuery(
+    "currentUser",
+    async () => {
+      return pb.authStore?.model;
+    },
+    {
+      retry: false,
+    }
+  );
   const {
     status: postsStatus,
     data: posts,
@@ -43,41 +51,48 @@ const Home = () => {
     hasPreviousPage,
   } = useInfiniteQuery(
     "homePosts",
-    async ({ pageParam = 0 }) => {
-      return Backendless.APIServices.Posts.getFollowingPosts({ pageSize: 20, pageOffset: pageParam });
+    async ({ pageParam = 1 }) => {
+      return getFollowingPosts(20, pageParam)
     },
     {
-      getNextPageParam: (lastPage, pages) => (lastPage.length === 20 ? pages.length * 20 : undefined),
+      enabled: !!user,
+      getNextPageParam: (lastPage, pages) =>  (lastPage.totalPages > pages.length ? pages.length + 1 : undefined),
     }
   );
   const {
     status: trendsStatus,
     data: trendsHashtags,
     error: trendsError,
-  } = useQuery("homeHashtags", async () => {
-    return await Backendless.APIServices.Posts.trendingHashtags();
-  },{
-    enabled: window.innerWidth > 850
-  });
+  } = useQuery(
+    "homeHashtags",
+    async () => {
+      return trendingHashtags()
+    },
+    {
+      enabled: window.innerWidth > 850,
+    }
+  );
   const {
     status: homeUserStatus,
     data: homeUser,
     error: homeUserError,
-  } = useQuery("homeUserList", async () => {
-    return Backendless.APIServices.Users.getSuggestedUsers();
-  }, {
-    enabled: window.innerWidth > 850
-  });
+  } = useQuery(
+    "homeUserList",
+    async () => {
+      return getSuggestedUsers()
+    },
+    {
+      enabled: !!user && window.innerWidth > 850,
+    }
+  );
 
   useEffect(async () => {
-    if(userError?.code === 3064 || postsError?.code === 3064 || trendsError?.code === 3064 || homeUserError?.code === 3064) {
-      Backendless.UserService.logout()
-      .then(function () {
-        queryClient.invalidateQueries("currentUser")
-        location.reload();
-      })
+    if (user && !pb.authStore.isValid) {
+      pb.authStore.clear();
+      queryClient.invalidateQueries("currentUser");
+      location.reload();
     }
-  }, [userStatus, postsStatus, trendsError, homeUserStatus])
+  }, [user]);
 
   useEffect(() => {
     if (userStatus === "success") {
@@ -99,7 +114,7 @@ const Home = () => {
           <div class={style["left-column"]}>
             <PostCard user={user} />
             {postsStatus == "success" &&
-              (posts.pages[0].length === 0 ? (
+              (posts.pages[0].totalItems === 0 ? (
                 <div class={style["empty-cont"]}>
                   <img src={Empty} />
                   <div>
@@ -111,7 +126,7 @@ const Home = () => {
                   </div>
                 </div>
               ) : (
-                posts.pages.map((postsRender) => postsRender.map((post) => <PostedCard data={post} user={user} />))
+                posts.pages.map((postsRender) => postsRender.items.map((post) => <PostedCard data={post} user={user} />))
               ))}
             <div ref={loadRef}>
               {isFetchingNextPage || postsStatus === "loading" ? (
@@ -126,30 +141,30 @@ const Home = () => {
             </div>
           </div>
           <div class={style["right-column"]}>
-            {trendsStatus === "success" && trendsHashtags.length > 0 && (
+            {trendsStatus === "success" && trendsHashtags.items.length > 0 && (
               <div class="card">
                 <div class="card-header">
                   <strong class="smaller">Trends</strong>
                 </div>
                 <div class="card-body">
-                  {trendsHashtags.map((trend) => (
-                    <Link href={"/explore/top/" + encode(trend.hashtag)} class={style["hashtag-cont"]}>
+                  {trendsHashtags.items.map((trend) => (
+                    <Link href={"/explore/top/" + encode(trend.name)} class={style["hashtag-cont"]}>
                       <p class="m-0">
-                        <strong>{trend.hashtag}</strong>
+                        <strong>{trend.name}</strong>
                       </p>
-                      <p class="smaller m-0">{trend.postCount} Posts</p>
+                      <p class="smaller m-0">{trend.amount} Posts</p>
                     </Link>
                   ))}
                 </div>
               </div>
             )}
-            {homeUserStatus === "success" && homeUser.length > 0 && (
+            {homeUserStatus === "success" && homeUser.items.length > 0 && (
               <div class="card">
                 <div class="card-header">
                   <strong class="smaller">Who to follow</strong>
                 </div>
                 <div class="card-body">
-                  {homeUser.map((user) => (
+                  {homeUser.items.map((user) => (
                     <HomeUserBox user={user} />
                   ))}
                 </div>
@@ -182,33 +197,32 @@ const Home = () => {
 export default Home;
 
 const HomeUserBox = ({ user }) => {
-  const [followers, setFollowers] = useState(user.followers);
-  const [followed, setFollowed] = useState(user.followed);
+  const [followers, setFollowers] = useState(user.followers.length);
+  const [followed, setFollowed] = useState(false);
 
   async function follow(e) {
-    e.preventDefault()
-    e.stopPropagation()
-    setFollowers(followed ? followers - 1 : followers + 1)
+    e.preventDefault();
+    e.stopPropagation();
     setFollowed(!followed)
     if (!followed) {
-      await Backendless.APIServices.Users.followUser(user.objectId).catch((err) => {
-        setFollowed(!followed)
-        setFollowers(followers - 1)
+      followUser(user.id).then(res => {
+        setFollowers(followers + 1)
+      }).catch((err) => {
         toastError(err);
       });
     } else {
-      await Backendless.APIServices.Users.unfollowUser(user.objectId).catch((err) => {
-        setFollowed(!followed)
-        setFollowers(followers + 1)
+      unfollowUser(user.id).then(res => {
+        setFollowers(followers - 1)
+      }).catch((err) => {
         toastError(err);
       });
     }
   }
 
   return (
-    <Link href={"/profile/" + user.username} class={style["follow-card"]}>
-      <img class={style["follow-banner"]} src={user.banner?.small || bannerPlaceholder} />
-      <img class={style["follow-profile-picture"]} src={user.profilePicture?.small || ppPlaceholder} />
+    <Link href={"/profile/" + user.id} class={style["follow-card"]}>
+      <img class={style["follow-banner"]} src={user?.banner ? pb.getFileUrl(user, user.banner, {thumb: "600x0"}) : bannerPlaceholder} />
+      <img class={style["follow-profile-picture"]} src={user?.avatar ? pb.getFileUrl(user, user.avatar, {thumb: "60x0"}) : ppPlaceholder} />
       <div class={style["follow-head"]}>
         <div class={style["follow-name"]}>
           <p class="m-0">
@@ -217,14 +231,16 @@ const HomeUserBox = ({ user }) => {
           <p class="smaller m-0">{followers} Follower</p>
         </div>
         {followed ? (
-          <button class="small sec" onClick={follow}>Unfollow</button>
+          <button class="small sec" onClick={follow}>
+            Unfollow
+          </button>
         ) : (
           <button class="small" onClick={follow}>
             <i class="fa-solid fa-user-plus"></i> Follow
           </button>
         )}
       </div>
-      {user.bio && <p class={style["card-bio"] + " m-0 mt-05"}>{user.bio}</p>}
+      {user.biography && <p class={style["card-bio"] + " m-0 mt-05"}>{user.biography}</p>}
     </Link>
   );
 };

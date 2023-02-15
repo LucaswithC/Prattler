@@ -9,6 +9,9 @@ import AppLogo from "../../assets/icons/AppLogo.svg";
 import GoogleMark from "../../assets/brands/Google-Mark.png";
 import GitHubMark from "../../assets/brands/GitHub-Mark.png";
 
+import pb from "../../_pocketbase/connect";
+import { signupUser } from "../../_pocketbase/services/Users";
+
 let emailCheckTimeout;
 
 const SignUp = () => {
@@ -17,11 +20,15 @@ const SignUp = () => {
     status: userStatus,
     data: user,
     error: userError,
-  } = useQuery("currentUser", async () => {
-    return Backendless.UserService.getCurrentUser()
-  }, {
-    retry: false,
-  });
+  } = useQuery(
+    "currentUser",
+    async () => {
+      return pb.authStore?.model;
+    },
+    {
+      retry: false,
+    }
+  );
 
   const [pw, setPw] = useState("");
   const [pwStatus, setpwStatus] = useState(false);
@@ -37,21 +44,19 @@ const SignUp = () => {
 
   const [generalError, setGeneralError] = useState(false);
 
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!!user) route("/profile");
   }, [user]);
 
   useEffect(async () => {
-    if(userError?.code === 3064) {
-      Backendless.UserService.logout()
-      .then(function () {
-        queryClient.invalidateQueries("currentUser")
-        location.reload();
-      })
+    if (user && !user.isValid) {
+      pb.authStore.clear();
+      queryClient.invalidateQueries("currentUser");
+      location.reload();
     }
-  }, [userStatus])
+  }, [userStatus]);
 
   useEffect(() => {
     if (pw.length > 0 && pw.match(/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,20}$/g)) {
@@ -96,43 +101,37 @@ const SignUp = () => {
 
   function createUser(e) {
     e.preventDefault();
-    setLoading(true)
+    setLoading(true);
     setEmailError("");
     setUsernameError("");
     setGeneralError("");
 
     let formData = e.target.elements;
 
-    var newUser = new Backendless.User();
+    var newUser = {};
     newUser.email = formData.email.value;
     newUser.password = formData.password.value;
     newUser.username = formData.username.value;
     newUser.name = formData.username.value;
 
-    Backendless.APIServices.Users.signupUser(newUser)
+    signupUser(newUser)
       .then((user) => {
-        Backendless.UserService.login(email, pw, true)
+        pb.collection("users")
+          .authWithPassword(email, pw)
           .then((user) => {
             queryClient.invalidateQueries("currentUser");
           })
           .catch((error) => {
-            setLoading(false)
+            setLoading(false);
             console.log(error);
           });
       })
       .catch((error) => {
-        console.log(error.message + " " + error.code);
-        if (error.code === 1155) {
-          setUsernameError("Username already taken");
-          setUsernameStatus(false);
-        } else if (error.code === 3033) {
-          setEmailError("Email already connected with an account");
-          setEmailStatus(false);
-        } else {
-          setGeneralError("Something went wrong");
-        }
+        setGeneralError(
+          error?.data?.data?.email?.message || error?.data?.data?.password?.message || error?.data?.data?.username?.message || error?.message || "Something went wrong"
+        );
         setPw("");
-        setLoading(false)
+        setLoading(false);
       });
   }
 
@@ -153,7 +152,7 @@ const SignUp = () => {
           <p class="m-0">Lets start posting with your own personal account and spread your thoughts into the world!</p>
           {generalError.length > 0 && (
             <p class={"small " + style.error}>
-              <i class="fa-regular fa-circle-xmark"></i> Something went wrong, please try again
+              <i class="fa-regular fa-circle-xmark"></i> {generalError}
             </p>
           )}
           <form class={style["login-form"]} onSubmit={createUser}>
