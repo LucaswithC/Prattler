@@ -13,7 +13,7 @@ import { followUser, unfollowUser } from "../../_pocketbase/services/Users";
 const ExpPeople = ({ user, curUser }) => {
   const [followers, setFollowers] = useState(user.followers.length);
   const [follows, setFollows] = useState(user.follows.length)
-  const [followed, setFollowed] = useState(curUser.follows.includes(user.id));
+  const [followed, setFollowed] = useState(curUser?.follows.includes(user.id));
 
   async function follow(e) {
     e.preventDefault();
