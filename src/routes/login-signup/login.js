@@ -70,9 +70,9 @@ const Login = () => {
       <div class={style["login-right"]}>
         <div class={style["login-header"]}>
           <img src={AppLogo} class={style.logo} />
-          <Link href="/" class="button sec">
+          <button onclick={() => history.back()} class="button sec">
             Back
-          </Link>
+          </button>
         </div>
         <div class={style["login-outer"]}>
         <div class={style["login-form-cont"]}>
