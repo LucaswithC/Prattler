@@ -9,7 +9,7 @@ const Footer = () => (
         © Lucas
       </a>
     </p>
-    <p class={"m-0 smaller dimmed"}>BETA {packageJson.version}</p>
+    <p class={"m-0 smaller dimmed"}>ALPHA {packageJson.version}</p>
   </div>
 );
 
