@@ -88,3 +88,5 @@ $ npm start
 ## Contact
 
 - GitHub [@LucaswithC](https://github.com/LucaswithC)
+
+[![Netlify Status](https://api.netlify.com/api/v1/badges/8c7f8f85-757e-465a-929c-d62217a4e126/deploy-status)](https://app.netlify.com/sites/prattler-test/deploys)
